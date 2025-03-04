@@ -1,0 +1,7 @@
+c Choco 231113
+v <instantiation id='sol1' type='solution' ><list>heights[0] heights[1] heights[2] heights[3] heights[4] heights[5] heights[6] heights[7] heights[8] heights[9] visible[0] visible[1] visible[2] visible[3] visible[4] visible[5] visible[6] visible[7] visible[8] visible[9] </list><values>9 6 5 8 7 10 4 3 2 1 1 0 0 0 0 1 0 0 0 0 </values></instantiation>
+
+s SATISFIABLE
+v <instantiation id='sol1' type='solution' ><list>heights[0] heights[1] heights[2] heights[3] heights[4] heights[5] heights[6] heights[7] heights[8] heights[9] visible[0] visible[1] visible[2] visible[3] visible[4] visible[5] visible[6] visible[7] visible[8] visible[9] </list><values>9 6 5 8 7 10 4 3 2 1 1 0 0 0 0 1 0 0 0 0 </values></instantiation>
+d FOUND SOLUTIONS 1
+
