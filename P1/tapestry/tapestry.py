@@ -3,6 +3,35 @@ from pycsp3 import *
 
 def solve_tapestry(clues: list[list[(int, int)]]) -> list[list[(int, int)]]:
     # Put your code here
+    SIZE = len(clues)
+
+    shape = VarArray(size=[SIZE,SIZE], dom=range(1, SIZE+1))
+    color = VarArray(size=[SIZE,SIZE], dom=range(1, SIZE+1))
+
+    # x = clues ?
+    satisfy(
+        # constraint 1 (rows)
+            # shape
+            [AllDifferent(shape[i]) for i in range(SIZE)],
+            # color
+            [AllDifferent(color[i]) for i in range(SIZE)],
+
+        # constraint 2 (cols)
+            # shape
+            [AllDifferent(shape[:, i]) for i in range(SIZE)],
+            # color
+            [AllDifferent(color[:, i]) for i in range(SIZE)],
+
+        # constraint 3 (combinaison)
+            [AllDifferent()]
+
+    )
+
+    if solve(solver=CHOCO) is SAT:
+        print("SATISFIABLE")
+        print(values(pair))
+    else:
+        print("UNSATISFIABLE")
 
     return None
 

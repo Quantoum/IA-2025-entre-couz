@@ -1,0 +1,7 @@
+<instance format="XCSP3" type="CSP">
+  <variables>
+    <array id="shape" size="[5][5]"> 1..5 </array>
+    <array id="color" size="[5][5]"> 1..5 </array>
+    <array id="pair" size="[5][5]"> 0..24 </array>
+  </variables>
+</instance>
