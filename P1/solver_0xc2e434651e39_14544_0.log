@@ -1,0 +1,7 @@
+c Choco 231113
+v <instantiation id='sol1' type='solution' ><list>x[0] x[1] x[2] x[3] x[4] x[5] x[6] x[7] x[8] x[9] number_of_visible highest </list><values>10 2 3 5 9 4 6 1 8 7 2 10 </values></instantiation>
+
+s SATISFIABLE
+v <instantiation id='sol1' type='solution' ><list>x[0] x[1] x[2] x[3] x[4] x[5] x[6] x[7] x[8] x[9] number_of_visible highest </list><values>10 2 3 5 9 4 6 1 8 7 2 10 </values></instantiation>
+d FOUND SOLUTIONS 1
+

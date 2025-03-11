@@ -1,0 +1,7 @@
+c Choco 231113
+v <instantiation id='sol1' type='solution' ><list>x[0] x[1] x[2] x[3] x[4] x[5] x[6] x[7] x[8] x[9] b[0] b[1] b[2] b[3] b[4] b[5] b[6] b[7] b[8] b[9] aux_gb[0] aux_gb[1] aux_gb[2] aux_gb[3] aux_gb[4] aux_gb[5] aux_gb[6] aux_gb[7] </list><values>4 3 2 1 10 9 6 8 7 5 1 0 0 0 1 0 0 0 0 0 4 4 4 10 10 10 10 10 </values></instantiation>
+
+s SATISFIABLE
+v <instantiation id='sol1' type='solution' ><list>x[0] x[1] x[2] x[3] x[4] x[5] x[6] x[7] x[8] x[9] b[0] b[1] b[2] b[3] b[4] b[5] b[6] b[7] b[8] b[9] aux_gb[0] aux_gb[1] aux_gb[2] aux_gb[3] aux_gb[4] aux_gb[5] aux_gb[6] aux_gb[7] </list><values>4 3 2 1 10 9 6 8 7 5 1 0 0 0 1 0 0 0 0 0 4 4 4 10 10 10 10 10 </values></instantiation>
+d FOUND SOLUTIONS 1
+

@@ -1,0 +1,5 @@
+<instance format="XCSP3" type="CSP">
+  <variables>
+    <array id="values" note="Define variables: each cell contains a tuple (s, c)" size="[5][5]"> 1 2 3 4 5 </array>
+  </variables>
+</instance>

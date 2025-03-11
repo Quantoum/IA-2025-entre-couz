@@ -1,0 +1,65 @@
+<instance format="XCSP3" type="CSP">
+  <variables>
+    <array id="x" size="[10]"> 1..10 </array>
+    <array id="b" size="[10]"> 0 1 </array>
+    <array id="aux_gb" note="aux_gb[i] is the ith auxiliary variable having been automatically introduced" size="[8]"> 1..10 </array>
+  </variables>
+  <constraints>
+    <allDifferent> x[] </allDifferent>
+    <intension> eq(b[0],1) </intension>
+    <intension> or(le(x[1],x[0]),eq(b[1],1)) </intension>
+    <intension> or(gt(x[1],x[0]),eq(b[1],0)) </intension>
+    <intension> or(ge(aux_gb[0],x[2]),eq(b[2],1)) </intension>
+    <intension> or(lt(aux_gb[0],x[2]),eq(b[2],0)) </intension>
+    <maximum>
+      <list> x[0] x[1] </list>
+      <condition> (eq,aux_gb[0]) </condition>
+    </maximum>
+    <intension> or(ge(aux_gb[1],x[3]),eq(b[3],1)) </intension>
+    <intension> or(lt(aux_gb[1],x[3]),eq(b[3],0)) </intension>
+    <maximum>
+      <list> x[0..2] </list>
+      <condition> (eq,aux_gb[1]) </condition>
+    </maximum>
+    <intension> or(ge(aux_gb[2],x[4]),eq(b[4],1)) </intension>
+    <intension> or(lt(aux_gb[2],x[4]),eq(b[4],0)) </intension>
+    <maximum>
+      <list> x[0..3] </list>
+      <condition> (eq,aux_gb[2]) </condition>
+    </maximum>
+    <intension> or(ge(aux_gb[3],x[5]),eq(b[5],1)) </intension>
+    <intension> or(lt(aux_gb[3],x[5]),eq(b[5],0)) </intension>
+    <maximum>
+      <list> x[0..4] </list>
+      <condition> (eq,aux_gb[3]) </condition>
+    </maximum>
+    <intension> or(ge(aux_gb[4],x[6]),eq(b[6],1)) </intension>
+    <intension> or(lt(aux_gb[4],x[6]),eq(b[6],0)) </intension>
+    <maximum>
+      <list> x[0..5] </list>
+      <condition> (eq,aux_gb[4]) </condition>
+    </maximum>
+    <intension> or(ge(aux_gb[5],x[7]),eq(b[7],1)) </intension>
+    <intension> or(lt(aux_gb[5],x[7]),eq(b[7],0)) </intension>
+    <maximum>
+      <list> x[0..6] </list>
+      <condition> (eq,aux_gb[5]) </condition>
+    </maximum>
+    <intension> or(ge(aux_gb[6],x[8]),eq(b[8],1)) </intension>
+    <intension> or(lt(aux_gb[6],x[8]),eq(b[8],0)) </intension>
+    <maximum>
+      <list> x[0..7] </list>
+      <condition> (eq,aux_gb[6]) </condition>
+    </maximum>
+    <intension> or(ge(aux_gb[7],x[9]),eq(b[9],1)) </intension>
+    <intension> or(lt(aux_gb[7],x[9]),eq(b[9],0)) </intension>
+    <maximum>
+      <list> x[0..8] </list>
+      <condition> (eq,aux_gb[7]) </condition>
+    </maximum>
+    <sum>
+      <list> b[] </list>
+      <condition> (eq,2) </condition>
+    </sum>
+  </constraints>
+</instance>
