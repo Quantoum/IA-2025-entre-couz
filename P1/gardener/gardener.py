@@ -1,52 +1,60 @@
 from pycsp3 import *
 
-
-def solve_gardener(instructions: list[list[int]]) -> list[list[int]]:
+def solve_gardener(instructions):
+    if not instructions or len(instructions) != 4 or not instructions[0]:
+        return None
     n = len(instructions[0])
-    lines = VarArray(size=len(instructions[0]), dom=range(1, n + 1))
-    columns = VarArray(size=len(instructions[1]), dom=range(1, n + 1))
     
+    # Create n x n grid
+    grid = VarArray(size=(n, n), dom=range(1, n+1))
+    
+    # AllDifferent for rows and columns
     for i in range(n):
-        satisfy(AllDifferent(lines[i]))
-        satisfy(AllDifferent(columns[i]))
+        satisfy(AllDifferent(grid[i]))
+    for j in range(n):
+        satisfy(AllDifferent([grid[i][j] for i in range(n)]))
+    
+    # Process rows (left/right visibility)
+    for i in range(n):
+        # Left visibility (unique ID per row)
+        left_visible = VarArray(size=n, dom={0,1}, id=f"left_vis_{i}")
+        satisfy(left_visible[0] == 1)
+        for j in range(1, n):
+            cond = conjunction(grid[i][j] > grid[i][k] for k in range(j))
+            satisfy(left_visible[j] == cond)
+        satisfy(Sum(left_visible) == instructions[1][i])
         
-    for k in range(n):     
-            #if n == 0:
-            #    return []
-            heights = VarArray(size=n, dom=range(1, n + 1))
-            visible_left = VarArray(size=n, dom={0, 1})
-            visible_right = VarArray(size=n, dom={0, 1})
-            # Ensure all heights are unique
-            satisfy(AllDifferent(heights))
-            
-            # The first hedge is always visible
-            satisfy(visible_left[0] == 1)
-            satisfy(visible_right[0] == 1)
-            
-            for i in range(1, n):
-                conditions_left = [heights[i] > heights[j] for j in range(i)]
-                conditions_right = [heights[i] < heights[j] for j in range(i)] 
-
-                # Combine conditions with logical AND
-                cond = conditions_left[0]
-                for c in conditions_left[1:]: # verify that cond is greater than every other
-                    cond = cond & c # if c is false (other one greater than him), then cond is false (and it never changes)
-                satisfy(visible_left[i] == cond) # if the tower is visible
-                
-                cond = conditions_left[0]
-                for c in conditions_left[1:]: # verify that cond is greater than every other
-                    cond = cond & c # if c is false (other one greater than him), then cond is false (and it never changes)
-                satisfy(visible_right[i] == cond) # if the tower is visible
-
-            # Total visible must match the instruction
-            satisfy(Sum(visible_left) == instructions[1][k])
-            satisfy(Sum(visible_right) == instructions[2][k])
-            
-
+        # Right visibility (unique ID per row)
+        right_visible = VarArray(size=n, dom={0,1}, id=f"right_vis_{i}")
+        satisfy(right_visible[-1] == 1)
+        for j in range(n-1):
+            cond = conjunction(grid[i][j] > grid[i][k] for k in range(j+1, n))
+            satisfy(right_visible[j] == cond)
+        satisfy(Sum(right_visible) == instructions[2][i])
+    
+    # Process columns (top/bottom visibility)
+    for j in range(n):
+        # Top visibility (unique ID per column)
+        top_visible = VarArray(size=n, dom={0,1}, id=f"top_vis_{j}")
+        satisfy(top_visible[0] == 1)
+        for i in range(1, n):
+            cond = conjunction(grid[i][j] > grid[k][j] for k in range(i))
+            satisfy(top_visible[i] == cond)
+        satisfy(Sum(top_visible) == instructions[0][j])
+        
+        # Bottom visibility (unique ID per column)
+        bottom_visible = VarArray(size=n, dom={0,1}, id=f"bot_vis_{j}")
+        satisfy(bottom_visible[-1] == 1)
+        for i in range(n-1):
+            cond = conjunction(grid[i][j] > grid[k][j] for k in range(i+1, n))
+            satisfy(bottom_visible[i] == cond)
+        satisfy(Sum(bottom_visible) == instructions[3][j])
+    
     if solve(solver=CHOCO) is SAT:
-        return [heights[i].value for i in range(n)]
+        return [[var.value for var in row] for row in grid]
     else:
         return None
+
 
 def verify_format(solution: list[list[int]], n: int):
     validity = True
@@ -92,4 +100,3 @@ if __name__ == "__main__":
     else:
         print("No solution found")
     
-
