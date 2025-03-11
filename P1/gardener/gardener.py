@@ -2,28 +2,46 @@ from pycsp3 import *
 
 
 def solve_gardener(instructions: list[list[int]]) -> list[list[int]]:
-    if n == 0:
-        return []
-    heights = VarArray(size=n, dom=range(1, n + 1))
-    visible = VarArray(size=n, dom={0, 1})
-
-    # Ensure all heights are unique
-    satisfy(AllDifferent(heights))
+    n = len(instructions[0])
+    lines = VarArray(size=len(instructions[0]), dom=range(1, n + 1))
+    columns = VarArray(size=len(instructions[1]), dom=range(1, n + 1))
     
-    # The first hedge is always visible
-    satisfy(visible[0] == 1)
+    for i in range(n):
+        satisfy(AllDifferent(lines[i]))
+        satisfy(AllDifferent(columns[i]))
+        
+    for k in range(n):     
+            #if n == 0:
+            #    return []
+            heights = VarArray(size=n, dom=range(1, n + 1))
+            visible_left = VarArray(size=n, dom={0, 1})
+            visible_right = VarArray(size=n, dom={0, 1})
+            # Ensure all heights are unique
+            satisfy(AllDifferent(heights))
+            
+            # The first hedge is always visible
+            satisfy(visible_left[0] == 1)
+            satisfy(visible_right[0] == 1)
+            
+            for i in range(1, n):
+                conditions_left = [heights[i] > heights[j] for j in range(i)]
+                conditions_right = [heights[i] < heights[j] for j in range(i)] 
 
-    for i in range(1, n):
-        conditions = [heights[i] > heights[j] for j in range(i)]
+                # Combine conditions with logical AND
+                cond = conditions_left[0]
+                for c in conditions_left[1:]: # verify that cond is greater than every other
+                    cond = cond & c # if c is false (other one greater than him), then cond is false (and it never changes)
+                satisfy(visible_left[i] == cond) # if the tower is visible
+                
+                cond = conditions_left[0]
+                for c in conditions_left[1:]: # verify that cond is greater than every other
+                    cond = cond & c # if c is false (other one greater than him), then cond is false (and it never changes)
+                satisfy(visible_right[i] == cond) # if the tower is visible
 
-        # Combine conditions with logical AND
-        cond = conditions[0]
-        for c in conditions[1:]: # verify that cond is greater than every other
-            cond = cond & c # if c is false (other one greater than him), then cond is false (and it never changes)
-        satisfy(visible[i] == cond) # if the tower is visible
-
-    # Total visible must match the instruction
-    satisfy(Sum(visible) == instruction)
+            # Total visible must match the instruction
+            satisfy(Sum(visible_left) == instructions[1][k])
+            satisfy(Sum(visible_right) == instructions[2][k])
+            
 
     if solve(solver=CHOCO) is SAT:
         return [heights[i].value for i in range(n)]
