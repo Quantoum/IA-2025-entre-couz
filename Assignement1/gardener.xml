@@ -1,0 +1,109 @@
+<instance format="XCSP3" type="CSP">
+  <variables>
+    <array id="grid" note="Create n x n grid" size="[3][3]"> 1..3 </array>
+    <array id="left_vis_0" note="Left visibility (unique ID per row)" size="[3]"> 0 1 </array>
+    <array id="right_vis_0" note="Right visibility (unique ID per row)" size="[3]"> 0 1 </array>
+    <array id="left_vis_1" note="Left visibility (unique ID per row)" size="[3]"> 0 1 </array>
+    <array id="right_vis_1" note="Right visibility (unique ID per row)" size="[3]"> 0 1 </array>
+    <array id="left_vis_2" note="Left visibility (unique ID per row)" size="[3]"> 0 1 </array>
+    <array id="right_vis_2" note="Right visibility (unique ID per row)" size="[3]"> 0 1 </array>
+    <array id="top_vis_0" note="Top visibility (unique ID per column)" size="[3]"> 0 1 </array>
+    <array id="bot_vis_0" note="Bottom visibility (unique ID per column)" size="[3]"> 0 1 </array>
+    <array id="top_vis_1" note="Top visibility (unique ID per column)" size="[3]"> 0 1 </array>
+    <array id="bot_vis_1" note="Bottom visibility (unique ID per column)" size="[3]"> 0 1 </array>
+    <array id="top_vis_2" note="Top visibility (unique ID per column)" size="[3]"> 0 1 </array>
+    <array id="bot_vis_2" note="Bottom visibility (unique ID per column)" size="[3]"> 0 1 </array>
+  </variables>
+  <constraints>
+    <allDifferent> grid[0][] </allDifferent>
+    <allDifferent> grid[1][] </allDifferent>
+    <allDifferent> grid[2][] </allDifferent>
+    <allDifferent> grid[][0] </allDifferent>
+    <allDifferent> grid[][1] </allDifferent>
+    <allDifferent> grid[][2] </allDifferent>
+    <intension> eq(left_vis_0[0],1) </intension>
+    <intension> eq(left_vis_0[1],gt(grid[0][1],grid[0][0])) </intension>
+    <intension> eq(left_vis_0[2],and(gt(grid[0][2],grid[0][0]),gt(grid[0][2],grid[0][1]))) </intension>
+    <sum>
+      <list> left_vis_0[] </list>
+      <condition> (eq,1) </condition>
+    </sum>
+    <intension> eq(right_vis_0[2],1) </intension>
+    <intension> eq(right_vis_0[0],and(gt(grid[0][0],grid[0][1]),gt(grid[0][0],grid[0][2]))) </intension>
+    <intension> eq(right_vis_0[1],gt(grid[0][1],grid[0][2])) </intension>
+    <sum>
+      <list> right_vis_0[] </list>
+      <condition> (eq,2) </condition>
+    </sum>
+    <intension> eq(left_vis_1[0],1) </intension>
+    <intension> eq(left_vis_1[1],gt(grid[1][1],grid[1][0])) </intension>
+    <intension> eq(left_vis_1[2],and(gt(grid[1][2],grid[1][0]),gt(grid[1][2],grid[1][1]))) </intension>
+    <sum>
+      <list> left_vis_1[] </list>
+      <condition> (eq,2) </condition>
+    </sum>
+    <intension> eq(right_vis_1[2],1) </intension>
+    <intension> eq(right_vis_1[0],and(gt(grid[1][0],grid[1][1]),gt(grid[1][0],grid[1][2]))) </intension>
+    <intension> eq(right_vis_1[1],gt(grid[1][1],grid[1][2])) </intension>
+    <sum>
+      <list> right_vis_1[] </list>
+      <condition> (eq,1) </condition>
+    </sum>
+    <intension> eq(left_vis_2[0],1) </intension>
+    <intension> eq(left_vis_2[1],gt(grid[2][1],grid[2][0])) </intension>
+    <intension> eq(left_vis_2[2],and(gt(grid[2][2],grid[2][0]),gt(grid[2][2],grid[2][1]))) </intension>
+    <sum>
+      <list> left_vis_2[] </list>
+      <condition> (eq,3) </condition>
+    </sum>
+    <intension> eq(right_vis_2[2],1) </intension>
+    <intension> eq(right_vis_2[0],and(gt(grid[2][0],grid[2][1]),gt(grid[2][0],grid[2][2]))) </intension>
+    <intension> eq(right_vis_2[1],gt(grid[2][1],grid[2][2])) </intension>
+    <sum>
+      <list> right_vis_2[] </list>
+      <condition> (eq,1) </condition>
+    </sum>
+    <intension> eq(top_vis_0[0],1) </intension>
+    <intension> eq(top_vis_0[1],gt(grid[1][0],grid[0][0])) </intension>
+    <intension> eq(top_vis_0[2],and(gt(grid[2][0],grid[0][0]),gt(grid[2][0],grid[1][0]))) </intension>
+    <sum>
+      <list> top_vis_0[] </list>
+      <condition> (eq,1) </condition>
+    </sum>
+    <intension> eq(bot_vis_0[2],1) </intension>
+    <intension> eq(bot_vis_0[0],and(gt(grid[0][0],grid[1][0]),gt(grid[0][0],grid[2][0]))) </intension>
+    <intension> eq(bot_vis_0[1],gt(grid[1][0],grid[2][0])) </intension>
+    <sum>
+      <list> bot_vis_0[] </list>
+      <condition> (eq,3) </condition>
+    </sum>
+    <intension> eq(top_vis_1[0],1) </intension>
+    <intension> eq(top_vis_1[1],gt(grid[1][1],grid[0][1])) </intension>
+    <intension> eq(top_vis_1[2],and(gt(grid[2][1],grid[0][1]),gt(grid[2][1],grid[1][1]))) </intension>
+    <sum>
+      <list> top_vis_1[] </list>
+      <condition> (eq,2) </condition>
+    </sum>
+    <intension> eq(bot_vis_1[2],1) </intension>
+    <intension> eq(bot_vis_1[0],and(gt(grid[0][1],grid[1][1]),gt(grid[0][1],grid[2][1]))) </intension>
+    <intension> eq(bot_vis_1[1],gt(grid[1][1],grid[2][1])) </intension>
+    <sum>
+      <list> bot_vis_1[] </list>
+      <condition> (eq,2) </condition>
+    </sum>
+    <intension> eq(top_vis_2[0],1) </intension>
+    <intension> eq(top_vis_2[1],gt(grid[1][2],grid[0][2])) </intension>
+    <intension> eq(top_vis_2[2],and(gt(grid[2][2],grid[0][2]),gt(grid[2][2],grid[1][2]))) </intension>
+    <sum>
+      <list> top_vis_2[] </list>
+      <condition> (eq,2) </condition>
+    </sum>
+    <intension> eq(bot_vis_2[2],1) </intension>
+    <intension> eq(bot_vis_2[0],and(gt(grid[0][2],grid[1][2]),gt(grid[0][2],grid[2][2]))) </intension>
+    <intension> eq(bot_vis_2[1],gt(grid[1][2],grid[2][2])) </intension>
+    <sum>
+      <list> bot_vis_2[] </list>
+      <condition> (eq,1) </condition>
+    </sum>
+  </constraints>
+</instance>

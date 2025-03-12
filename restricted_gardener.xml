@@ -1,0 +1,23 @@
+<instance format="XCSP3" type="CSP">
+  <variables>
+    <array id="heights" size="[10]"> 1..10 </array>
+    <array id="visible" size="[10]"> 0 1 </array>
+  </variables>
+  <constraints>
+    <allDifferent> heights[] </allDifferent>
+    <intension> eq(visible[0],1) </intension>
+    <intension> eq(visible[1],gt(heights[1],heights[0])) </intension>
+    <intension> eq(visible[2],and(gt(heights[2],heights[0]),gt(heights[2],heights[1]))) </intension>
+    <intension> eq(visible[3],and(gt(heights[3],heights[0]),gt(heights[3],heights[1]),gt(heights[3],heights[2]))) </intension>
+    <intension> eq(visible[4],and(gt(heights[4],heights[0]),gt(heights[4],heights[1]),gt(heights[4],heights[2]),gt(heights[4],heights[3]))) </intension>
+    <intension> eq(visible[5],and(gt(heights[5],heights[0]),gt(heights[5],heights[1]),gt(heights[5],heights[2]),gt(heights[5],heights[3]),gt(heights[5],heights[4]))) </intension>
+    <intension> eq(visible[6],and(gt(heights[6],heights[0]),gt(heights[6],heights[1]),gt(heights[6],heights[2]),gt(heights[6],heights[3]),gt(heights[6],heights[4]),gt(heights[6],heights[5]))) </intension>
+    <intension> eq(visible[7],and(gt(heights[7],heights[0]),gt(heights[7],heights[1]),gt(heights[7],heights[2]),gt(heights[7],heights[3]),gt(heights[7],heights[4]),gt(heights[7],heights[5]),gt(heights[7],heights[6]))) </intension>
+    <intension> eq(visible[8],and(gt(heights[8],heights[0]),gt(heights[8],heights[1]),gt(heights[8],heights[2]),gt(heights[8],heights[3]),gt(heights[8],heights[4]),gt(heights[8],heights[5]),gt(heights[8],heights[6]),gt(heights[8],heights[7]))) </intension>
+    <intension> eq(visible[9],and(gt(heights[9],heights[0]),gt(heights[9],heights[1]),gt(heights[9],heights[2]),gt(heights[9],heights[3]),gt(heights[9],heights[4]),gt(heights[9],heights[5]),gt(heights[9],heights[6]),gt(heights[9],heights[7]),gt(heights[9],heights[8]))) </intension>
+    <sum>
+      <list> visible[] </list>
+      <condition> (eq,5) </condition>
+    </sum>
+  </constraints>
+</instance>
