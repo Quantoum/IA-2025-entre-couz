@@ -45,3 +45,7 @@ Training :
 1. Training stability : 
 * label smoothing (small noise policy to prevent overconfidence)
 * gradient clipping (avoid exploding gradients)
+2. Games phases ? Midgame, endgame, maybe like chess with openings
+3. Uses replay buffer to store improvement
+4. PP0, TD learning
+5. Gradually reduce MCTS simulations as the network improves.

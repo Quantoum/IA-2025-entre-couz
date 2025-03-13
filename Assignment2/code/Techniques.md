@@ -1,6 +1,5 @@
 
-### **1. Core Techniques: Hybridizing MCTS and Deep Reinforcement Learning (RL)**
-The most effective solution for games like Fenix is a **fusion of Monte Carlo Tree Search (MCTS)** and **deep reinforcement learning (RL)** with neural networks, inspired by frameworks like **AlphaZero** and **MuZero**. Here’s why:
+### **1. Hybrid MCTS and Deep RL**
 
 #### **MCTS (Monte Carlo Tree Search)**:
 - **Strengths**: 
@@ -30,13 +29,6 @@ The most effective solution for games like Fenix is a **fusion of Monte Carlo Tr
 
 ---
 
-### **2. Key Adaptations for Fenix**
-Fenix’s hybrid chess/draughts mechanics demand tailored adjustments:
-
-#### **State Representation**:
-- Represent the board as a **multi-channel tensor** (e.g., one-hot encoding for piece types: chess pawn, draught king, etc.).
-- Include game phase (e.g., midgame, endgame) or turn count if rules evolve over time.
-
 #### **Neural Network Architecture**:
 - Use a **ResNet-like CNN** (Convolutional Neural Network) to process spatial patterns in chess/draughts.
 - Add **attention mechanisms** or **transformer layers** if long-range dependencies (e.g., coordination between distant pieces) are critical.
@@ -46,21 +38,6 @@ Fenix’s hybrid chess/draughts mechanics demand tailored adjustments:
 
 #### **Hybrid Evaluation**:
 - Combine chess-centric features (e.g., material balance, king safety) and draughts tactics (e.g., king promotions, forced jumps) in the value network or reward function.
-
----
-
-### **3. Training Pipeline**
-1. **Self-Play**:
-   - Train the policy-value network by playing millions of games against itself.
-   - Use MCTS to generate high-quality moves and evaluations.
-   - Store game trajectories in a replay buffer.
-
-2. **Supervised Learning (Optional)**:
-   - Pretrain the network on existing Fenix game records (if available) to bootstrap knowledge.
-
-3. **Reinforcement Learning**:
-   - Update the network using **Proximal Policy Optimization (PPO)** or **TD learning** with rewards based on game outcomes (win/loss/draw).
-   - Gradually reduce MCTS simulations as the network improves.
 
 ---
 
@@ -86,10 +63,3 @@ If computational resources are limited:
 - **Traditional MCTS** with domain-specific enhancements (e.g., domain knowledge in node selection).
 
 ---
-
-### **Conclusion**
-**Deep reinforcement learning + MCTS** is the gold standard for complex strategy games like Fenix. By combining guided search with self-taught neural networks, your AI can adapt to both chess-like positional play and draughts-like forced capture tactics. The key to success lies in:
-- Properly modeling the game’s rules in the MCTS framework,
-- Designing a neural network that captures hybrid strategies,
-- Iterative training with computational efficiency. 
-
