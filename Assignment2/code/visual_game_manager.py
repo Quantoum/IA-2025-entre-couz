@@ -5,6 +5,7 @@ import random
 import threading
 import time
 from copy import deepcopy
+from agent import Agent
 
 class VisualGameManager:
     """
@@ -72,12 +73,12 @@ class VisualGameManager:
         pygame.display.set_caption("Fenix")
 
         self.pieces_images = {
-            3: pygame.image.load("pngs/king_red.png"),
-            2: pygame.image.load("pngs/general_red.png"),
-            1: pygame.image.load("pngs/soldier_red.png"),
-            -1: pygame.image.load("pngs/soldier_black.png"),
-            -2: pygame.image.load("pngs/general_black.png"),
-            -3: pygame.image.load("pngs/king_black.png")
+            3: pygame.image.load("code/pngs/king_red.png"),
+            2: pygame.image.load("code/pngs/general_red.png"),
+            1: pygame.image.load("code/pngs/soldier_red.png"),
+            -1: pygame.image.load("code/pngs/soldier_black.png"),
+            -2: pygame.image.load("code/pngs/general_black.png"),
+            -3: pygame.image.load("code/pngs/king_black.png")
         }
 
         self.number_font = pygame.font.Font(None, 36)
@@ -143,7 +144,6 @@ class VisualGameManager:
             if not self.actions:
                 self.actions = self.state.actions()
             if self.selected_action:
-
                 if self.state.to_move() == 1:
                     self.remaining_time_red -= (time.perf_counter_ns() - self.start_thinking_time) * 1e-9
                 else:
@@ -269,5 +269,6 @@ class VisualGameManager:
 
 
 if __name__ == "__main__":
-    instance = VisualGameManager()
+    agent = Agent(player=1)
+    instance = VisualGameManager(red_agent=agent)
     instance.play()

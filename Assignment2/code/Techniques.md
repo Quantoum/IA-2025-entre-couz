@@ -2,7 +2,7 @@
 ### **1. Hybrid MCTS and Deep RL**
 
 #### **MCTS (Monte Carlo Tree Search)**:
-- **Strengths**: 
+- **Strengths**:
   - Handles high **branching factors** (many possible moves) by strategically exploring the most promising paths via **simulations**.
   - Balances **exploration** (trying new moves) and **exploitation** (refining known good paths).
   - Works well in adversarial games with **imperfect information**, though Fenix likely has perfect information.
