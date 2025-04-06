@@ -6,6 +6,7 @@ import threading
 import time
 from copy import deepcopy
 from agent import Agent
+from random_agent import RandomAgent
 
 class VisualGameManager:
     """
@@ -269,6 +270,8 @@ class VisualGameManager:
 
 
 if __name__ == "__main__":
-    agent = Agent(player=1)
-    instance = VisualGameManager(red_agent=agent)
+    agent_1 = Agent(player=1)
+    #agent_1 = RandomAgent(player=1)
+    agent_2 = RandomAgent(player=-1)
+    instance = VisualGameManager(red_agent=agent_1, black_agent=agent_2)
     instance.play()

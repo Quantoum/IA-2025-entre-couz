@@ -1,6 +1,8 @@
 import fenix
 import time
 from copy import deepcopy
+from agent import Agent
+from random_agent import RandomAgent
 
 class TextGameManager:
     def __init__(self, agent_1, agent_2, time_limit=300, display=True):
@@ -71,3 +73,18 @@ class TextGameManager:
             if self.display:
                 print(f"Player -1 ran out of time.")
             return 1, -1
+
+if __name__ == "__main__":
+
+    total_score_1 = 0
+    total_score_2 = 0
+    
+    agent_1 = Agent(player=1)
+    agent_2 = RandomAgent(player=-1)
+    
+    for i in range(50):
+        game_manager = TextGameManager(agent_1, agent_2, time_limit=300, display=False)
+        (score_1, score_2) = game_manager.play()
+        total_score_1 += score_1 + 1
+        total_score_2 += score_2 + 1
+    print(f"Final Score: {total_score_1} - {total_score_2}")

@@ -231,6 +231,8 @@ class FenixState:
             state.boring_turn += 1
             state.history_boring_turn_hash.append(self._hash())
 
+        #print(self.pieces)
+        
         return state
 
     def is_terminal(self):
