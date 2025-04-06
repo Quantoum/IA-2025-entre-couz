@@ -50,12 +50,12 @@ class AlphaBeta:
     
     def heuristics(self, state):
         score = 0
-        score += 1 * self.materialHeuristic(state)
+        score += 10 * self.materialHeuristic(state) # 10 because it forces the player to recreate a king
         score += 1 * self.mobilityHeuristic(state)
         score += 1 * self.positionalHeuristic(state)
         score += 1 * self.pieceSafetyHeuristic(state)
         score += 1 * self.timeManaging(state)
-        score += 100 * self.gameResult(state)
+        score += float('inf') * self.gameResult(state)
         return score
     
     def materialHeuristic(self, state):
@@ -72,7 +72,9 @@ class AlphaBeta:
         return 0
     
     def positionalHeuristic(self, state):
-        # number of pieces on the board
+        # the more pieces are in the boarder, the better
+        
+        
         return 0
     
     def pieceSafetyHeuristic(self, state):

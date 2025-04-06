@@ -81,10 +81,12 @@ if __name__ == "__main__":
     
     agent_1 = Agent(player=1)
     agent_2 = RandomAgent(player=-1)
+    #agent_2 = Agent(player=-1)
     
-    for i in range(50):
+    for i in range(10):
         game_manager = TextGameManager(agent_1, agent_2, time_limit=300, display=False)
         (score_1, score_2) = game_manager.play()
-        total_score_1 += score_1 + 1
-        total_score_2 += score_2 + 1
-    print(f"Final Score: {total_score_1} - {total_score_2}")
+        total_score_1 += score_1
+        total_score_2 += score_2
+        print(f"Game {i+1}: {score_1} vs {score_2}")
+    print(f"Final Score: {total_score_1} vs {total_score_2}")
