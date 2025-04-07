@@ -1,23 +1,33 @@
 import random
 import fenix
+import math
 
 class AlphaBeta:
     def __init__(self, player, max_depth=float('inf')):
         self.player = player
         self.max_depth = max_depth
+        self.transposition_table = {}
 
     def alpha_beta_search(self, state):
         action = None
         if state.to_move() == self.player:
             _, action = self.max_value(state, -float('inf'), float('inf'), 0)
         else:
-            #_, action = self.min_value(state, -float('inf'), float('inf'), 0)
-            pass
+            _, action = self.min_value(state, -float('inf'), float('inf'), 0)
         return action
 
     def max_value(self, state, alpha, beta, depth):
+        
+        # Check if the state is already in the transposition table
+        state_key = state._hash()
+        if state_key in self.transposition_table:
+            return self.transposition_table[state_key]
+        
         if state.is_terminal() or depth >= self.max_depth:
             return self.heuristics(state), None
+        
+        #ordered_actions = sorted(state.actions(), key=lambda a: self.materialHeuristic(state.result(a)), reverse=False)
+        
         value = -float('inf')
         action = None
         for a in state.actions():
@@ -27,12 +37,25 @@ class AlphaBeta:
                 action = a
                 alpha = max(alpha, value)
             if value >= beta:
-                return value, a  # Beta cutoff
+                return value, action  # Beta cutoff
+        
+        # Store the value in the transposition table
+        self.transposition_table[state_key] = (value, action)
+        
         return value, action
 
     def min_value(self, state, alpha, beta, depth):
+        
+        # Check if the state is already in the transposition table
+        state_key = state._hash()
+        if state_key in self.transposition_table:
+            return self.transposition_table[state_key]
+        
         if state.is_terminal() or depth >= self.max_depth:
             return self.heuristics(state), None
+        
+        #ordered_actions = sorted(state.actions(), key=lambda a: self.materialHeuristic(state.result(a)), reverse=True)
+        
         value = float('inf')
         action = None
         for a in state.actions():
@@ -43,53 +66,72 @@ class AlphaBeta:
                 beta = min(beta, value)
             if value <= alpha:
                 return value, action  # Alpha cutoff
+            
+        # Store the value in the transposition table
+        self.transposition_table[state_key] = (value, action)
+        
         return value, action
-    
+
     def best_action(self, state): # for function names consistency
         return self.alpha_beta_search(state)
     
     def heuristics(self, state):
+        if state.is_terminal():
+            return 1000 * state.utility(self.player) # 1000 because it means the game is over
+        
         score = 0
-        score += 10 * self.materialHeuristic(state) # 10 because it forces the player to recreate a king
-        score += 1 * self.mobilityHeuristic(state)
+        score += 3 * self.materialHeuristic(state) # 10 because it forces the player to recreate a king
         score += 1 * self.positionalHeuristic(state)
-        score += 1 * self.pieceSafetyHeuristic(state)
         score += 1 * self.timeManaging(state)
-        score += float('inf') * self.gameResult(state)
         return score
     
     def materialHeuristic(self, state):
         # number of pieces on the board
         # at the start of the game, each player has 21 pieces
         score = 0
-        for piece in state.pieces.values():
-            score += piece
+        for weight in state.pieces.values():
+            score += weight
         
         return score
-        
-    def mobilityHeuristic(self, state):
-        # number of possible moves
-        return 0
+    
+    '''
+    #old function, may serve for the report and future characterization of the agent
+    def positionalHeuristic(self, state):
+        # the more pieces are in the border, the better
+        on_border = 0
+        for position, piece_value in state.pieces.items():
+            # Check if this is your piece
+            is_your_piece = False
+            if self.player == 1 and piece_value > 0:  # Player 1 with positive pieces
+                is_your_piece = True
+            elif self.player == -1 and piece_value < 0:  # Player -1 with negative pieces
+                is_your_piece = True
+                
+            if is_your_piece:
+                # Check if piece is on border
+                if position[0] == 0 or position[0] == 6:
+                    on_border += 1
+                if position[1] == 0 or position[1] == 7:
+                    on_border += 1
+                # Extra bonus if on the corner
+                if position in [(0,0), (0,7), (6,0), (6,7)]:
+                    on_border += 1
+        return on_border'''
     
     def positionalHeuristic(self, state):
-        # the more pieces are in the boarder, the better
+        # Precompute border positions
+        border_positions = {(0,y) for y in range(8)} | {(6,y) for y in range(8)} | \
+                        {(x,0) for x in range(7)} | {(x,7) for x in range(7)}
         
-        
-        return 0
-    
-    def pieceSafetyHeuristic(self, state):
-        # number of pieces on the board
-        return 0
+        on_border = 0
+        for position, piece_value in state.pieces.items():
+            if (self.player == 1 and piece_value > 0) or (self.player == -1 and piece_value < 0):
+                if position in border_positions:
+                    on_border += 1
+        return on_border
     
     def timeManaging(self, state):
         # number of pieces on the board
         return 0
-    
-    def gameResult(self, state):
-        # gives the result of the game
-        if state.is_terminal():
-            return state.utility(self.player) - state.utility(-self.player)
-        else:
-            # game is not finished yet
-            return 0
+        
         

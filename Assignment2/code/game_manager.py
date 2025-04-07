@@ -3,6 +3,7 @@ import time
 from copy import deepcopy
 from agent import Agent
 from random_agent import RandomAgent
+import time
 
 class TextGameManager:
     def __init__(self, agent_1, agent_2, time_limit=300, display=True):
@@ -83,10 +84,17 @@ if __name__ == "__main__":
     agent_2 = RandomAgent(player=-1)
     #agent_2 = Agent(player=-1)
     
-    for i in range(10):
+    number_of_games = 50
+    
+    print(f"Sart of {number_of_games} games")
+    t1 = time.time()
+    for i in range(number_of_games):
         game_manager = TextGameManager(agent_1, agent_2, time_limit=300, display=False)
         (score_1, score_2) = game_manager.play()
         total_score_1 += score_1
         total_score_2 += score_2
         print(f"Game {i+1}: {score_1} vs {score_2}")
+        t2 = time.time()
+        delay = t2 - t1
+        print(f"Time elapsed: {delay:.2f} seconds")
     print(f"Final Score: {total_score_1} vs {total_score_2}")
