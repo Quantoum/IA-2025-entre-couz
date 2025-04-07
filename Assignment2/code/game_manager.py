@@ -84,7 +84,7 @@ if __name__ == "__main__":
     agent_2 = RandomAgent(player=-1)
     #agent_2 = Agent(player=-1)
     
-    number_of_games = 50
+    number_of_games = 100
     
     print(f"Sart of {number_of_games} games")
     t1 = time.time()
@@ -97,4 +97,5 @@ if __name__ == "__main__":
         t2 = time.time()
         delay = t2 - t1
         print(f"Time elapsed: {delay:.2f} seconds")
-    print(f"Final Score: {total_score_1} vs {total_score_2}")
+        print(f"Final Score: {total_score_1} vs {total_score_2}")
+    print(f"FINAL: {total_score_1} vs {total_score_2}")

@@ -24,7 +24,9 @@ class Agent:
         if remaining_time <= 1:
             print("No more time.")
             return choice(state.actions())
-        
+        elif remaining_time <= 10:
+            root = AlphaBeta(self.player, max_depth=4)
+            return root.best_action(state)
         elif state.turn < 10 and self.number_of_registered_moves*2 > state.turn:
             return self.start_game(state)
         elif state.turn < 10:
@@ -34,7 +36,7 @@ class Agent:
             try:
                 # Create the MCTS node with the current state
                 #root = MonteCarloTreeSearchNode(state=state, player=self.player, max_iterations=MAX_MCTS_ITERATIONS)
-                root = AlphaBeta(self.player, max_depth=6)
+                root = AlphaBeta(self.player, max_depth=7)
                 # Get the best action using best_action()
                 selected_node = root.best_action(state)
                 
