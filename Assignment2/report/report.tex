@@ -1,9 +1,35 @@
 \documentclass[11pt,a4paper]{report}
 \usepackage{marvosym}
 
+\usepackage[utf8]{inputenc}         % Pour l'encodage UTF-8
+\usepackage[T1]{fontenc}            % Encodage des fontes
+\usepackage[french]{babel}          % Langue française
+\usepackage{amsmath, amssymb}       % Symboles mathématiques
+\usepackage{listings}               % Pour afficher du code
+\usepackage{xcolor}                 % Pour la coloration syntaxique
+\usepackage{caption}                % Pour les légendes des listings
+\usepackage{enumitem}               % Pour customiser les listes
+\lstset{
+  language=C++,            % choose the language
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{orange},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  numbersep=5pt,
+  breaklines=true,
+  frame=single,
+  captionpos=b
+}
+
+
+
+
 \assignment{2}
-\group{...}
-\students{..........}{..........}
+\group{040}
+\students{Quentin de Pierpont}{Arnaud Ullens}
 
 \begin{document}
 
@@ -19,7 +45,47 @@ Answer to the questions by adding text in the boxes. You may answer in either \t
 As a first step, provide a detailed explanation of the design of your agent. The important thing here is to describe what you have implemented and why you have chosen this particular approach. Explain all the tricks that you have coded and why you think they are good for the game of Fenix.
 
 \begin{answers}[10cm]
-    % TODO explain your agent here
+\textbf{Fénix} est un jeu a déterministe, en tour par tour à 2 joueurs, à somme nulle et information parfaite.
+
+Notre architecture principale est donc basée sur l'algorithme alpha beta, une variante de minimax, parfaitement adaptée à ce genre de problème. Nous ne détaillerons pas l'implémentation de $\alpha-\beta$ mais plutôt les améliorations apportées à celui-ci. L'avantage de cet algorithme comparé a minimax est qu'il permet de réduire l'arbre des positions explorées grâce au pruning. 
+
+Pour augmenter ce pruning, qui pour rappel fait passer la complexité temporelle de O(b^m) à O(b^{3m/4}) (si noeuds visités dans un ordre aléatoire où b est le nombre de coups possibles et m la profondeur de l'arbre), une approche consiste a explorer les coups dans un ordre non aléatoire (complexité temporelle de O(b^{m/2}) si ordre parfait).
+Nous fournissons donc a alphabeta ordered_actions = sorted(state.actions(), key=lambda a: self.materialHeuristic(state.result(a)), reverse=False) au lieu de state.actions() . ordered_actions ordonne les coups grâce a une heuristique de nombre de pièces restantes sur le plateau. Cependant les test nous ont montrés que cette liste ordonnée n'ameliore pas les performances de notre algorithme, au contraire elle les détériore. Cela veut dire qu'ordonner la liste demande plus de calcul que qu'elle n'en économise en prunant plus efficacement l'arbre.
+
+
+Concernant la fonction d'évaluation, comme alpha beta n'a pas l'occasion d'explorer l'entièreté de l'arbre, nous ne pouvons pas évaluer les coups qui ne sont pas de coups finaux. C'est ici que la fonction heuristics entre en jeu. Le fonction heuristics est une combinaison linéaire de plusieurs heurisitques:
+\begin{itemize}
+    \item Heuristique de matériel
+    \item Heuristique de position 
+    \item Heuristique de victoire 
+\end{itemize}
+
+\textbf{heuristique de matériel :}
+chaque pion vaut 1, chaque general vaut 2 et le roi vaut 3. On fait la somme de tous les pions sur le plateau en comptant en négatif pour l'adversiare (exemple il a encore 2 généraux : -2*2 = -4 points)
+
+\textbf{heuristique de position :}
+on est plus en sécurité sur les bords (testé en faisant pleins de partie) ainsi, chaque pion sur le bord rapporte 1 point de score avec score double au coin (encore plus sécuritaire)
+
+\textbf{heuristique de fin de partie :}
+-1000 si partie perdante, 1000 si gagante, 0 si match nul
+
+\textbf{Strategie de début de partie : }
+de manière empirique on a l'impression que placer son roi dans le coin est stratégique. on va donc imposer cela en début de partie pour gagner du temps (car il y a un grand branching factor en début de partie et peu de coup réellemetn meilleur qu'un autre donc un faible pruning.
+
+\textbf{management du temps :}
+au début, lors de la création des généraux et du roi, vu que le branching factor est élevé on impose un profondeur de 4. Notre agent est donc déjà réactif aux choix de positionnement de l'adversaire. 
+
+des que la phase de positionnement est terminée, la profondeur passe à 7, pour analyser le jeu avec précision. Si on passe à 8, le temps de jeu devient trop long. 
+Pour éviter de prendre trop de temps à calculer les coups, la profondeur réduit au fur et à mesure de la partie. Lorsqu'il reste : 
+\begin{itemize}
+    \item 50 secondes, depth = 6
+    \item 10 secondes, depth = 4
+    \item 1 seconde, depth = 1
+\end{itemize}
+
+\textbf{Mémoire et hashtable}
+pour ne pas réévaluer une position doublon, on garde en mémoire les positions déjà explorées avec leur value.
+
 \end{answers}
 
 \begin{answers}[23cm]
@@ -32,7 +98,41 @@ As a first step, provide a detailed explanation of the design of your agent. The
 To support your design choices and evaluate your agent's performance, you must conduct a series of experiments. Your experimental analysis should provide clear, quantitative evidence of the improvements made to your agent.
 
 \begin{answers}[20cm]
-    % TODO explain your comparison method and draw conclusions
+
+\textbf{Heuristiques}
+
+Dans notre implémentation initiale, la fonction d'évaluation combinait plusieurs heuristiques pondérées de la manière suivante :
+
+
+score = 0
+score += 3 * self.materialHeuristic(state)
+score += 1 * self.positionalHeuristic(state)
+score += 1000 * self.gameResult(state)
+
+
+
+cependant, nous nous sommes rendu compte que lorsque l'on estime un état final, notre algorithme va toucher +1000 -1000 ou 0 avec l'heuristique gameResult, cela surpasse complètement les autres heuristiques mais notre programme se fatigue quand même à les calculer. Nous sommes donc passer à ceci 
+
+if state.is_terminal():
+    return 1000 * state.utility(self.player)  # 1000 car la partie est terminee
+
+score = 0
+score += 3 * self.materialHeuristic(state)
+score += 1 * self.positionalHeuristic(state)
+return score
+
+
+Cette méthode présente permet un gain de temps en évitant le calcul d’heuristiques inutiles lorsque l’issue du jeu est déjà connue.
+
+
+TODO  comparaison temps de calculs ancienne vs nouvelle méthode
+
+TODO ajustement des poids optimaux (à tester avec bcp parties contre un aléatoire ou ancienne ia)
+
+\textbf{Mémorisation (hash table)}
+
+TODO test improvement
+
 \end{answers}
 
 \begin{answers}[23cm]

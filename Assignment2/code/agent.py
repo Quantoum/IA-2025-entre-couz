@@ -1,17 +1,11 @@
+
 #
 # LINFO 1361 - Artificial Intelligence 
 # Fenix game - April 2025
 # Author: Arnaud Ullens, Quentin de Pierpont
 # 
 
-import time
-from random import choice
-from mcts import MonteCarloTreeSearchNode
-from alpha_beta import AlphaBeta
-import warnings
-from consts import MAX_MCTS_ITERATIONS
-from fenix import FenixAction
-from hybrid_agent import BetterMCTSNode, HybridAgent
+from hybrid_agent import HybridAgent
 
 class Agent:
     def __init__(self, player):
