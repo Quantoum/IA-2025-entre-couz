@@ -280,11 +280,11 @@ class HybridAgent:
         """
         Determine the current game phase based on turn number and board state.
         """
-        # Check if we're in the opening phase (first few moves)
+        # check if we're in the opening phase (first few moves)
         if PREDETERMINED_START and state.turn in self.opening_book:
             return 'opening'
             
-        # Early game classification
+        # early game classification
         if state.turn < EARLY_GAME_THRESHOLD:
             return 'early'
             

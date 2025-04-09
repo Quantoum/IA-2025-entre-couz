@@ -1,8 +1,6 @@
 from numpy import random, uint64
 from consts import *
 
-# Initialize Zobrist tables with fixed seed for the entire program execution
-# This ensures hash values are consistent across all table instances
 _ZOBRIST_INITIALIZED = False
 _zobrist_pieces = None
 _zobrist_player = None
@@ -12,17 +10,13 @@ def _init_global_zobrist_tables():
     global _ZOBRIST_INITIALIZED, _zobrist_pieces, _zobrist_player
     
     if not _ZOBRIST_INITIALIZED:
-        # Set fixed seed for reproducibility
         rng = random.default_rng(seed=42)
         
-        # Initialize tables only once
-        # Use uint64 for the random numbers but ensure operations will convert to Python int
         _zobrist_pieces = rng.integers(0, 2**63, size=(2, 3, 7, 8), dtype=uint64)
         _zobrist_player = rng.integers(0, 2**63, size=2, dtype=uint64)
         
         _ZOBRIST_INITIALIZED = True
 
-# Initialize the global tables when this module is imported
 _init_global_zobrist_tables()
 
 class TranspositionTable:
@@ -41,8 +35,6 @@ class TranspositionTable:
     UPPER_BOUND = 2
 
     def __init__(self, max_size=10000):
-        # No need to initialize Zobrist tables in each instance
-        # Just use the global tables
         self.max_size = max_size
         self.table = {}
         self.hits = 0
@@ -67,9 +59,8 @@ class TranspositionTable:
             player_index = 0 if weight > 0 else 1
             piece_type = min(2, abs(weight) - 1)
             x, y = position
-            hash_value ^= _zobrist_pieces[player_index][piece_type][x][y]  # Use global table
+            hash_value ^= _zobrist_pieces[player_index][piece_type][x][y]
         
-        # Convert numpy uint64 to Python int to ensure it's hashable
         return int(hash_value)
         
     def get(self, state, depth, alpha, beta):
