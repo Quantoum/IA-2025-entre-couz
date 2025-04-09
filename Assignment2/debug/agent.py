@@ -1,170 +1,291 @@
-#
-# LINFO 1361 - Artificial Intelligence 
-# Fenix game - April 2025
-# Author: Arnaud Ullens, Quentin de Pierpont
-# 
+import random
+from game_manager import *
+from random_agent import *
 
-
-from random import choice
-#from mcts import MonteCarloTreeSearchNode
-#from alpha_beta import AlphaBeta
-import warnings
-#from consts import MAX_MCTS_ITERATIONS
-from fenix import FenixAction
 class Agent:
-    def __init__(self, player=None):
-        self.player = player
-        self.number_of_registered_moves = 0 # entre 0 et 5
 
+    def __init__(self, player):
+        self.cnt = 0
+        self.profondeur = 5
+        self.historique = None
+        self.lastKing = None
+        self.transposition_table = {}  # Cache des évaluations
+        self.move_consequences = {}
+        self.ajustementProfTime = 0
+        self.ajustementProfPiece = 0
+        self.player = player
+    
+    def changeProf(self, prof):
+        self.profondeur = prof
+    
     def act(self, state, remaining_time):
-        """
-            This function returns a FenixAction
-        """
-        # Check remaining time first and return a random legal action if time is exhausted
-        if remaining_time <= 1:
-            print("No more time.")
-            return choice(state.actions())
+        # #print("///////////////" + str(state.turn) + "///////////")
+        if(len(state.actions()) == 1):
+            return(state.actions()[0])
         
-        elif state.turn < 10 and self.number_of_registered_moves*2 > state.turn:
-            return self.start_game(state)
+        if(remaining_time < 50):
+            self.ajustementProfTime = - 3
+        elif(remaining_time < 100):
+            self.ajustementProfTime = - 2
+        elif(remaining_time < 200):
+            self.ajustementProfTime = - 1
         else:
-            try:
-                # Create the MCTS node with the current state
-                #root = MonteCarloTreeSearchNode(state=state, player=self.player, max_iterations=MAX_MCTS_ITERATIONS)
-                root = AlphaBeta(self.player, max_depth=2)
-                # Get the best action using best_action()
-                selected_node = root.best_action(state)
+            self.ajustementProfTime = 0
+        cnt = len(state.pieces.values())
+
+        if(cnt < 8):
+            self.ajustementProfPiece = 4 
+        elif(cnt < 10):
+            self.ajustementProfPiece = 3 
+        elif(cnt < 12):
+            self.ajustementProfPiece = 2  
+        elif(cnt < 15):
+            self.ajustementProfPiece = 1
+        else:
+            self.ajustementProfPiece = 0
+        
+        #print(str(self.profondeur)  + " ")
+        #print(str(self.ajustementProfTime) + " ")
+        #print(str(self.ajustementProfPiece) + "\n")
+        
+        # if(state.can_create_general):
+        #     self.ajustementProfPiece = self.ajustementProfPiece -1
+
+        
+        self.transposition_table.clear()
+        self.move_consequences.clear()
+        actions = state.actions()
+        self.cnt +=1
+        action = None
+        maxaction = 1000
+        minaction = -1000
+        self.lastKing = state.can_create_king
+        self.historique = state.history_boring_turn_hash
+        actions = [a for a in actions if not self.is_useless_pawn_action(state, a)]
+        map = self.init_id_map(state)
+
+        actionRectifierPourRoi = actions
+        if state.can_create_king and self.cnt > 6:
+            actionRectifierPourRoi = []
+            for possibleaction in actions:
+                if(3*self.player in state.result(possibleaction).pieces.values()):
+                    actionRectifierPourRoi.append(possibleaction)
+        if self.cnt == 1 and self.player == -1:
+            return state.actions()[17]
+        elif self.cnt == 2 and self.player == -1:
+            return state.actions()[10]
+        elif self.cnt < 6 and self.player == -1:
+            for i in range(0, 8):
+                for j in range(0, 8):
+                    if(i+j == 4):
+                        if(not (i,j) in state.pieces and j <= i):
+                            items = [a for a in actions if (a[0][0] + a[0][1] == 8 and a[1][0] + a[1][1] == 9 and a[0][0] == i and a[1][0] == i)]
+                            if(len(items) == 0):
+                                items = [a for a in actions if (a[0][0] + a[0][1] == 8 and a[1][0] + a[1][1] == 9 and a[0][0] == i+1 and a[1][0] == i)]
+                            if(len(items) == 1):
+                                return items[0]
+                        if(not (i,j) in state.pieces and i <= j):
+                            items = [a for a in actions if (a[0][0] + a[0][1] == 8 and a[1][0] + a[1][1] == 9 and a[0][1] == j and a[1][1] == j)]
+                            if(len(items) == 0):
+                                items = [a for a in actions if (a[0][0] + a[0][1] == 8 and a[1][0] + a[1][1] == 9 and a[0][1] == j+1 and a[1][1] == j)]
+                            if(len(items) == 1):
+                                return items[0]
+
+            actions = [a for a in actions if a[0][0] + a[0][1] == 8 and a[1][0] + a[1][1] == 9 ]
+            if(self.cnt == 5):
+                return actions[-1]
+            else:
+                return actions[0]
+        elif self.cnt == 1 and self.player == 1:
+            return state.actions()[5]
+        elif self.cnt == 2 and self.player == 1:
+            return state.actions()[0]
+        elif self.cnt < 6 and self.player == 1:
+            for i in range(0, 8):
+                for j in range(0, 8):
+                    if(i+j == 8):
+                        if(not (i,j) in state.pieces and j >= i):
+                            items = [a for a in actions if (a[0][0] + a[0][1] == 5 and a[1][0] + a[1][1] == 4 and a[0][0] == i-1 and a[1][0] == i)]
+                            if(len(items) == 0):
+                                items = [a for a in actions if (a[0][0] + a[0][1] == 5 and a[1][0] + a[1][1] == 4 and a[0][0] == i and a[1][0] == i)]
+                            if(len(items) == 1):
+                                return items[0]
+                        if(not (i,j) in state.pieces and i >= j):
+                            items = [a for a in actions if (a[0][0] + a[0][1] == 5 and a[1][0] + a[1][1] == 4 and a[0][1] == j-1 and a[1][1] == j)]
+                            if(len(items) == 0):
+                                items = [a for a in actions if (a[0][0] + a[0][1] == 5 and a[1][0] + a[1][1] == 4 and a[0][1] == j and a[1][1] == j)]
+                            if(len(items) == 1):
+                                return items[0]
+            actions = [a for a in actions if a[0][0] + a[0][1] == 5 and a[1][0] + a[1][1] == 4]
+            if(self.cnt == 5):
+                return actions[-1]
+            else:
+                return actions[0]
+        else:
+            for stateMax in actionRectifierPourRoi:
+                #if(self.consequence_of_action(state, stateMax, map)):
+                    resultMin = self.getMin(state.result(stateMax), self.profondeur + self.ajustementProfTime + self.ajustementProfPiece, minaction, self.update_id_map(map, stateMax))
+                    resultMin -= (self.historique.count(state.result(stateMax)._hash()) * 100)
+                    #if(self.historique.count(state.result(stateMax).precomputed_hash)) > 0:
+                        #print("ok c'est bon mtn ")
+                    if(resultMin > minaction):
+                        minaction = resultMin
+                        action = stateMax
+        #for cle, valeur in self.move_consequences.items():
+            #print(f"Clé : {cle}, Valeur : {valeur}")       
+        if action != None:
+            return action
+
+
+        #print("debut")
+        #print(self.eval(state))
+        #print("fini")
+        if len(actions) == 0:
+            raise Exception("No action available.")
+        return random.choice(actions)
+    
+    def eval(self, state):
+        sum_reward = 0
+        hadKing = False
+        for valeurs in state.pieces.values():
+            if(abs(valeurs) == 2):
+                sum_reward += valeurs*3
+            elif (abs(valeurs) == 3):
+                sum_reward += valeurs*5
+                if(valeurs*self.player > 0):
+                    hadKing = True
+            else:
+                sum_reward += valeurs
+        if(self.lastKing and not hadKing):
+            sum_reward -= 100
+        sum_reward = sum_reward*self.player
+        
+        return sum_reward
+    
+    def getMax(self, state, profondeur, maxActionUp, map):
+        state_hash = state._hash()
+        if (state_hash, profondeur) in self.transposition_table:
+            return self.transposition_table[(state_hash, profondeur)]
+
+        if(profondeur == 0):
+            val = self.eval(state)
+            self.transposition_table[(state_hash, profondeur)] = val
+            return val
+        
+        maxaction = -1000
+        actions = [a for a in state.actions() if not self.is_useless_pawn_action(state, a)]
+        for stateMax in actions:
+            #if(self.consequence_of_action(state, stateMax, map)):
                 
-                # Extract and return the parent_action from the selected node
-                return selected_node
-            
-            except RecursionError as e:
-                warnings.warn(f"Recursion error during MCTS: {e}. Falling back to random action.")
-                return choice(state.actions())
-            except Exception as e:
-                print(f"Error during MCTS: {e}")
-                return choice(state.actions())
-    
-    def start_game(self, state):
-        """
-            This function is called at the start of the game
-        """
-        registered_moves = {
-            0: ((0,0),(1,0)), # red general
-            1: ((6,7),(5,7)), # black general 
-            2: ((0,1),(1,1)), # red general
-            3: ((6,6),(5,6)), # black general
-            4: ((0,2),(1,2)), # red general
-            5: ((6,5),(5,5)), # black general
-            6: ((0,3),(0,4)), # red general
-            7: ((6,4),(6,3)), # black general
-            8: ((2,0),(1,0)), # red king
-            9: ((4,7),(5,7))  # black king
-        }
+                min = self.getMin(state.result(stateMax), profondeur-1, maxaction, self.update_id_map(map, stateMax))
+                if(min > maxaction):
+                    maxaction = min
+                    if(maxaction >= maxActionUp):
+                        break
         
-        """registered_moves = {
-            0: ((0,0),(1,0)), # red general
-            1: ((6,7),(5,7)), # black general 
-            2: ((0,1),(1,1)), # red general
-            3: ((6,6),(6,5)), # black general
-            4: ((0,2),(1,2)), # red general
-            5: ((5,6),(5,7)), # black general
-            6: ((0,3),(0,4)), # red general
-            7: ((6,4),(6,3)), # black general
-            8: ((2,0),(1,0)), # red king
-            9: ((4,7),(5,7))  # black king
-        }"""
-        
-        start, end = registered_moves.get(state.turn)
-        
-        return FenixAction(start, end, removed=frozenset())
-    
-class AlphaBeta:
-    def __init__(self, player, max_depth=float('inf')):
-        self.player = player
-        self.max_depth = max_depth
+        self.transposition_table[(state_hash, profondeur)] = maxaction
 
-    def alpha_beta_search(self, state):
-        action = None
-        if state.to_move() == self.player:
-            _, action = self.max_value(state, -float('inf'), float('inf'), 0)
+        return maxaction
+
+    def getMin(self, state, profondeur, minactionUP, map):
+        state_hash = state._hash()
+        if (state_hash, profondeur) in self.transposition_table:
+            return self.transposition_table[(state_hash, profondeur)]
+
+        if(profondeur == 0):
+            val = self.eval(state)
+            self.transposition_table[(state_hash, profondeur)] = val
+            return val
+        
+        minaction = 1000
+        actions = [a for a in state.actions() if not self.is_useless_pawn_action(state, a)]
+
+        for stateMin in actions:
+            #if(self.consequence_of_action(state, stateMin, map)):
+
+                min = self.getMax(state.result(stateMin), profondeur-1, minaction,  self.update_id_map(map, stateMin))
+                if(min < minaction):
+                    minaction = min
+                    if(min <= minactionUP):
+                        break
+        self.transposition_table[(state_hash, profondeur)] = minaction
+
+        return minaction
+    
+    def is_useless_pawn_action(self, state, action):
+        from_pos = action[0]
+        piece = state.pieces.get(from_pos)
+
+        if piece is None or abs(piece) >= 2:
+            return False  # Roi ou vide : on garde
+
+        if piece * self.player <= 0:
+            return False  # Pas notre pion
+
+        x, y = from_pos
+
+        for pos, other_piece in state.pieces.items():
+            x2 = pos[0]
+            y2 = pos[1]
+
+            if (x2, y2) == (x, y):
+                continue
+            if other_piece * self.player > 0 and (x2 == x + (1*self.player) or x2 == x) and (y2 == y +(1*self.player)  or y2 == y):
+                if self.has_valid_actions(state, (x2, y2)):
+
+                    return False  # On est "derrière" un autre pion de notre équipe
+
+        return False
+
+    def has_valid_actions(self, state, pos):
+        actions = state.actions()  # Récupère toutes les actions possibles dans le jeu
+        for action in actions:
+            if action.start == pos:  # Si l'action commence à la position donnée
+                return True  # Action valide trouvée
+        return False
+
+    def consequence_of_action(self, actualstate, action, map):
+        a, b = action[0]
+        grid = self.id_map_to_grid(map, [7,8])
+        id = grid[a][b]    
+        followingState = actualstate.result(action)
+        consequence = self.eval(followingState.result(followingState.actions()[0])) - self.eval(followingState)
+
+        if (action[0] , action[1], id) in self.move_consequences and self.move_consequences[(action[0], action[1], id)] == consequence:
+            return False
         else:
-            #_, action = self.min_value(state, -float('inf'), float('inf'), 0)
-            pass
-        return action
+            self.move_consequences[(action[0], action[1], id)] = consequence
+            return True
+    
+    def init_id_map(self, state):
+        id_map = {}
+        next_pos_id = 1
+        next_neg_id = -1
+        for pos, val in sorted(state.pieces.items()):
+            if val > 0:
+                id_map[pos] = next_pos_id
+                next_pos_id += 1
+            elif val < 0:
+                id_map[pos] = next_neg_id
+                next_neg_id -= 1
+        return id_map
+    
+    def update_id_map(self, id_map, action):
+        new_id_map = dict(id_map)
 
-    def max_value(self, state, alpha, beta, depth):
-        if state.is_terminal() or depth >= self.max_depth:
-            return self.heuristics(state), None
-        value = -float('inf')
-        action = None
-        for a in state.actions():
-            v, _ = self.min_value(state.result(a), alpha, beta, depth + 1)
-            if v > value:
-                value = v
-                action = a
-                alpha = max(alpha, value)
-            if value >= beta:
-                return value, a  # Beta cutoff
-        return value, action
+        # Le pion se déplace
+        moving_id = new_id_map.pop(action.start)
+        new_id_map[action.end] = moving_id
 
-    def min_value(self, state, alpha, beta, depth):
-        if state.is_terminal() or depth >= self.max_depth:
-            return self.heuristics(state), None
-        value = float('inf')
-        action = None
-        for a in state.actions():
-            v, _ = self.max_value(state.result(a), alpha, beta, depth + 1)
-            if v < value:
-                value = v
-                action = a
-                beta = min(beta, value)
-            if value <= alpha:
-                return value, action  # Alpha cutoff
-        return value, action
-    
-    def best_action(self, state): # for function names consistency
-        return self.alpha_beta_search(state)
-    
-    def heuristics(self, state):
-        score = 0
-        score += 1 * self.materialHeuristic(state)
-        score += 1 * self.mobilityHeuristic(state)
-        score += 1 * self.positionalHeuristic(state)
-        score += 1 * self.pieceSafetyHeuristic(state)
-        score += 1 * self.timeManaging(state)
-        score += 100 * self.gameResult(state)
-        return score
-    
-    def materialHeuristic(self, state):
-        # number of pieces on the board
-        # at the start of the game, each player has 21 pieces
-        score = 0
-        for piece in state.pieces.values():
-            score += piece
-        
-        return score
-        
-    def mobilityHeuristic(self, state):
-        # number of possible moves
-        return 0
-    
-    def positionalHeuristic(self, state):
-        # number of pieces on the board
-        return 0
-    
-    def pieceSafetyHeuristic(self, state):
-        # number of pieces on the board
-        return 0
-    
-    def timeManaging(self, state):
-        # number of pieces on the board
-        return 0
-    
-    def gameResult(self, state):
-        # gives the result of the game
-        if state.is_terminal():
-            return state.utility(self.player) - state.utility(-self.player)
-        else:
-            # game is not finished yet
-            return 0
+        # Les pions capturés disparaissent
+        for removed_pos in action.removed:
+            if removed_pos in new_id_map:
+                del new_id_map[removed_pos]
+
+        return new_id_map
+     
+    def id_map_to_grid(self, id_map, dim):
+        grid = [[0 for _ in range(dim[1])] for _ in range(dim[0])]
+        for (i, j), v in id_map.items():
+            grid[i][j] = v
+        return grid

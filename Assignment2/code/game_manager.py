@@ -3,6 +3,7 @@ import time
 from copy import deepcopy
 from agent import Agent
 from random_agent import RandomAgent
+from monAgent import monAgent
 import time
 
 class TextGameManager:
@@ -80,11 +81,11 @@ if __name__ == "__main__":
     total_score_1 = 0
     total_score_2 = 0
     
-    agent_1 = Agent(player=1)
+    agent_1 = monAgent(player=1)
     agent_2 = RandomAgent(player=-1)
     #agent_2 = Agent(player=-1)
     
-    number_of_games = 100
+    number_of_games = 10
     
     print(f"Sart of {number_of_games} games")
     t1 = time.time()
