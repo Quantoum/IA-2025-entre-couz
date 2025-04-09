@@ -68,6 +68,10 @@ class BetterMCTSNode(MonteCarloTreeSearchNode):
         # erro handling
         if not possible_moves:
             return None
+        
+        if len(possible_moves) == 1: # one move possible, no choice
+            print("Only one move possible, playing it !")
+            return possible_moves[0]
             
         # no time, get random to survive !
         if self.is_time_up() or len(possible_moves) > MAX_POSSIBLE_MOVE_RANDOM:
@@ -563,7 +567,7 @@ class HybridAgent:
             })
             
             # print table stats before the search (only once every 5 moves to reduce output)
-            if state.turn % 5 == 0:
+            if state.turn % 5 == 0 and DEBUG_MODE:
                 print(f"\nTurn {state.turn} - Initial TT state:")
                 self.trans_table.print_stats()
                 
@@ -586,13 +590,14 @@ class HybridAgent:
             self.time_usage_history.append(execution_time)
             
             # Get detailed TT stats - only print once every 5 moves to avoid clutter
-            if state.turn % 5 == 0:
+            if state.turn % 5 == 0 and DEBUG_MODE:
                 print(f"\nTurn {state.turn} - After search TT state:")
                 self.trans_table.print_stats()
             else:
                 # Just print the hit rate every move
-                hit_rate = self.trans_table.get_hit_rate()
-                print(f"Transposition table hit rate: {hit_rate:.2%} (Size: {len(self.trans_table.table)}/{self.trans_table.max_size})")
+                if DEBUG_MODE:
+                    hit_rate = self.trans_table.get_hit_rate()
+                    print(f"Transposition table hit rate: {hit_rate:.2%} (Size: {len(self.trans_table.table)}/{self.trans_table.max_size})")
             
             return action
             

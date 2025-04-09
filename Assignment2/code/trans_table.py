@@ -16,8 +16,9 @@ def _init_global_zobrist_tables():
         rng = random.default_rng(seed=42)
         
         # Initialize tables only once
-        _zobrist_pieces = rng.integers(0, 2**64, size=(2, 3, 7, 8), dtype=uint64)
-        _zobrist_player = rng.integers(0, 2**64, size=2, dtype=uint64)
+        # Use uint64 for the random numbers but ensure operations will convert to Python int
+        _zobrist_pieces = rng.integers(0, 2**63, size=(2, 3, 7, 8), dtype=uint64)
+        _zobrist_player = rng.integers(0, 2**63, size=2, dtype=uint64)
         
         _ZOBRIST_INITIALIZED = True
 
@@ -67,8 +68,9 @@ class TranspositionTable:
             piece_type = min(2, abs(weight) - 1)
             x, y = position
             hash_value ^= _zobrist_pieces[player_index][piece_type][x][y]  # Use global table
-            
-        return hash_value
+        
+        # Convert numpy uint64 to Python int to ensure it's hashable
+        return int(hash_value)
         
     def get(self, state, depth, alpha, beta):
         """
@@ -77,6 +79,10 @@ class TranspositionTable:
         """
         # get hash
         hash_key = self.compute_hash(state)
+        
+        # Ensure the hash key is a Python int, not a numpy int
+        if hasattr(hash_key, 'item'):
+            hash_key = hash_key.item()  # Convert numpy types to native Python
         
         # if the hash is in the table 
         if hash_key in self.table:
@@ -109,6 +115,10 @@ class TranspositionTable:
         """
         # Get the hash 
         hash_key = self.compute_hash(state)
+        
+        # Ensure the hash key is a Python int, not a numpy int
+        if hasattr(hash_key, 'item'):
+            hash_key = hash_key.item()  # Convert numpy types to native Python
         
         # Check if we should replace an existing entry
         replace = True
@@ -183,6 +193,10 @@ class TranspositionTable:
     
     def print_stats(self):
         """Print detailed statistics about the transposition table."""
+
+        if not DEBUG_MODE:
+            print("DEBUG mode deactivated")
+            return
         stats = self.get_stats()
         
         print("\n==== Transposition Table Statistics ====")
@@ -209,4 +223,9 @@ class TranspositionTable:
 
     def get_entry(self, state):
         hash_key = self.compute_hash(state)
+        
+        # Ensure the hash key is a Python int, not a numpy int
+        if hasattr(hash_key, 'item'):
+            hash_key = hash_key.item()  # Convert numpy types to native Python
+            
         return self.table.get(hash_key)

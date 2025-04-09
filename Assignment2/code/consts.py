@@ -31,3 +31,5 @@ MAX_DEPTH_A_B_LOW_TIME = 2     # Reduced from 3 to 2 for quicker decisions under
 MAX_DEPTH_A_B_NORMAL = 4       # Standard depth for alpha-beta
 
 EXPLORATION_WEIGHT_END_GAME = 0.8 
+
+DEBUG_MODE = False
