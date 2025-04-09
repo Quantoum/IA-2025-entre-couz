@@ -1,137 +1,204 @@
-import random
-import fenix
-import math
+#
+# LINFO 1361 - Artificial Intelligence 
+# Fenix game - April 2025
+# Author: Arnaud Ullens, Quentin de Pierpont
+# 
+
+# Import the TranspositionTable class to use its methods and constants
+from trans_table import TranspositionTable
 
 class AlphaBeta:
     def __init__(self, player, max_depth=float('inf')):
         self.player = player
         self.max_depth = max_depth
-        self.transposition_table = {}
+        # self.transposition_table should be an instance of TranspositionTable, set by the agent
+        self.transposition_table = None 
 
     def alpha_beta_search(self, state):
-        action = None
+        # Ensure the transposition table is assigned before starting
+        if self.transposition_table is None:
+            raise ValueError("Transposition table not set for AlphaBeta agent.")
+            
+        # Determine the initial call based on the current player
+        # We don't store the action from the top level, only the value.
+        # The best action is determined by iterating through the first level moves.
+        
+        best_action = None
         if state.to_move() == self.player:
-            _, action = self.max_value(state, -float('inf'), float('inf'), 0)
+            # Player is MAX player
+            best_value = -float('inf')
+            for action in state.actions():
+                value, _ = self.min_value(state.result(action), -float('inf'), float('inf'), 0)
+                if value > best_value:
+                    best_value = value
+                    best_action = action
         else:
-            _, action = self.min_value(state, -float('inf'), float('inf'), 0)
-        return action
+            # Player is MIN player (opponent's turn)
+            best_value = float('inf')
+            for action in state.actions():
+                value, _ = self.max_value(state.result(action), -float('inf'), float('inf'), 0)
+                if value < best_value:
+                    best_value = value
+                    best_action = action
+                    
+        return best_action
 
     def max_value(self, state, alpha, beta, depth):
-        
-        # Check if the state is already in the transposition table
-        state_key = state._hash()
-        if state_key in self.transposition_table:
-            return self.transposition_table[state_key]
-        
+        # Early cutoff for terminal states or max depth
         if state.is_terminal() or depth >= self.max_depth:
             return self.heuristics(state), None
         
-        #ordered_actions = sorted(state.actions(), key=lambda a: self.materialHeuristic(state.result(a)), reverse=False)
+        # --- Transposition Table Lookup --- 
+        original_alpha = alpha  # Store original alpha for TT storage flag
+        tt_value, tt_move = self.transposition_table.get(state, depth, alpha, beta)
+        if tt_value is not None:
+            return tt_value, tt_move  # Return the stored move as well
+        # --- End TT Lookup ---
         
         value = -float('inf')
-        action = None
-        for a in state.actions():
-            v, _ = self.min_value(state.result(a), alpha, beta, depth + 1)
+        best_action_for_node = None
+        
+        # Consider move ordering here using tt_move if available
+        actions = state.actions()
+        # simple move ordering: try stored best move first
+        if tt_move is not None and tt_move in actions:
+            actions.remove(tt_move)
+            actions.insert(0, tt_move)
+             
+        for action in actions:
+            v, _ = self.min_value(state.result(action), alpha, beta, depth + 1)
             if v > value:
                 value = v
-                action = a
-                alpha = max(alpha, value)
+                best_action_for_node = action  # Track the best action found at this node
+                alpha = max(alpha, value)  # Alpha update
+                
+            # Beta cutoff check
             if value >= beta:
-                return value, action  # Beta cutoff
+                # --- Transposition Table Store (Beta Cutoff) --- 
+                self.transposition_table.put(state, depth, value, TranspositionTable.LOWER_BOUND, best_action_for_node)
+                # --- End TT Store ---
+                return value, best_action_for_node  # Beta cutoff
         
-        # Store the value in the transposition table
-        self.transposition_table[state_key] = (value, action)
+        # --- Transposition Table Store (Exact or Upper Bound) ---
+        if value <= original_alpha:  # Failed low (Upper Bound for this node)
+            flag = TranspositionTable.UPPER_BOUND
+        else:  # Found an exact value within the alpha-beta window
+            flag = TranspositionTable.EXACT
+        self.transposition_table.put(state, depth, value, flag, best_action_for_node)
+        # --- End TT Store ---
         
-        return value, action
+        return value, best_action_for_node
 
     def min_value(self, state, alpha, beta, depth):
-        
-        # Check if the state is already in the transposition table
-        state_key = state._hash()
-        if state_key in self.transposition_table:
-            return self.transposition_table[state_key]
-        
+        # Early cutoff for terminal states or max depth
         if state.is_terminal() or depth >= self.max_depth:
             return self.heuristics(state), None
-        
-        #ordered_actions = sorted(state.actions(), key=lambda a: self.materialHeuristic(state.result(a)), reverse=True)
+            
+        # --- Transposition Table Lookup --- 
+        original_beta = beta  # Store original beta for TT storage flag
+        tt_value, tt_move = self.transposition_table.get(state, depth, alpha, beta)
+        if tt_value is not None:
+            return tt_value, tt_move  # Return stored move
+        # --- End TT Lookup ---
         
         value = float('inf')
-        action = None
-        for a in state.actions():
-            v, _ = self.max_value(state.result(a), alpha, beta, depth + 1)
+        best_action_for_node = None
+        
+        # Consider move ordering here using tt_move if available
+        actions = state.actions()
+        # simple move ordering: try stored best move first
+        if tt_move is not None and tt_move in actions:
+            actions.remove(tt_move)
+            actions.insert(0, tt_move)
+             
+        for action in actions:
+            v, _ = self.max_value(state.result(action), alpha, beta, depth + 1)
             if v < value:
                 value = v
-                action = a
-                beta = min(beta, value)
+                best_action_for_node = action  # Track best action
+                beta = min(beta, value)  # Beta update
+                
+            # Alpha cutoff check
             if value <= alpha:
-                return value, action  # Alpha cutoff
+                # --- Transposition Table Store (Alpha Cutoff) --- 
+                self.transposition_table.put(state, depth, value, TranspositionTable.UPPER_BOUND, best_action_for_node)
+                # --- End TT Store ---
+                return value, best_action_for_node  # Alpha cutoff
             
-        # Store the value in the transposition table
-        self.transposition_table[state_key] = (value, action)
+        # --- Transposition Table Store (Exact or Lower Bound) ---
+        if value >= original_beta:  # Failed high (Lower Bound for this node)
+            flag = TranspositionTable.LOWER_BOUND
+        else:  # Found an exact value within the alpha-beta window
+            flag = TranspositionTable.EXACT
+        self.transposition_table.put(state, depth, value, flag, best_action_for_node)
+        # --- End TT Store ---
         
-        return value, action
+        return value, best_action_for_node
 
-    def best_action(self, state): # for function names consistency
+    def best_action(self, state):
+        """Entry point for finding the best action."""
         return self.alpha_beta_search(state)
     
     def heuristics(self, state):
         if state.is_terminal():
-            return 1000 * state.utility(self.player) # 1000 because it means the game is over
+            # Use a large value for terminal states
+            utility = state.utility(self.player)
+            if utility == 1: return 10000 # Win
+            if utility == -1: return -10000 # Loss
+            return 0 # Draw
         
         score = 0
-        score += 3 * self.materialHeuristic(state) # 10 because it forces the player to recreate a king
+        # Material heuristic - weighted sum of piece values
+        # Positional heuristic - encourage pieces on border
+        score += 3 * self.materialHeuristic(state) 
         score += 1 * self.positionalHeuristic(state)
-        score += 1 * self.timeManaging(state)
+        # score += 1 * self.timeManaging(state) # timeManaging seems unused
         return score
     
     def materialHeuristic(self, state):
-        # number of pieces on the board
-        # at the start of the game, each player has 21 pieces
+        """Calculates material balance based on piece weights."""
         score = 0
-        for weight in state.pieces.values():
+        # state.pieces is a dictionary where:
+        # - keys are positions (tuples)
+        # - values are piece weights (integers)
+        for position, weight in state.pieces.items():
+            # Add the weight (positive for player 1, negative for player -1)
             score += weight
+        
+        # Ensure the score is relative to our player's perspective
+        if self.player == -1:
+            score = -score  # Negate if we're player -1
         
         return score
     
-    '''
-    #old function, may serve for the report and future characterization of the agent
     def positionalHeuristic(self, state):
-        # the more pieces are in the border, the better
-        on_border = 0
-        for position, piece_value in state.pieces.items():
-            # Check if this is your piece
-            is_your_piece = False
-            if self.player == 1 and piece_value > 0:  # Player 1 with positive pieces
-                is_your_piece = True
-            elif self.player == -1 and piece_value < 0:  # Player -1 with negative pieces
-                is_your_piece = True
-                
-            if is_your_piece:
-                # Check if piece is on border
-                if position[0] == 0 or position[0] == 6:
-                    on_border += 1
-                if position[1] == 0 or position[1] == 7:
-                    on_border += 1
-                # Extra bonus if on the corner
-                if position in [(0,0), (0,7), (6,0), (6,7)]:
-                    on_border += 1
-        return on_border'''
-    
-    def positionalHeuristic(self, state):
+        """Simple heuristic: counts pieces on the border."""
         # Precompute border positions
         border_positions = {(0,y) for y in range(8)} | {(6,y) for y in range(8)} | \
                         {(x,0) for x in range(7)} | {(x,7) for x in range(7)}
         
         on_border = 0
-        for position, piece_value in state.pieces.items():
-            if (self.player == 1 and piece_value > 0) or (self.player == -1 and piece_value < 0):
-                if position in border_positions:
+        opponent_on_border = 0
+        
+        # state.pieces is a dictionary where:
+        # - keys are positions (tuples)
+        # - values are piece weights (integers)
+        for position, weight in state.pieces.items():
+            if position in border_positions:
+                # If the weight is positive and we're player 1, it's our piece
+                # If the weight is negative and we're player -1, it's our piece
+                is_our_piece = (weight > 0 and self.player == 1) or (weight < 0 and self.player == -1)
+                
+                if is_our_piece:
                     on_border += 1
-        return on_border
+                else:
+                    opponent_on_border += 1
+                    
+        # Return difference to penalize opponent's border control
+        return on_border - opponent_on_border 
     
-    def timeManaging(self, state):
-        # number of pieces on the board
-        return 0
+    # timeManaging seems placeholder, returning 0
+    # def timeManaging(self, state):
+    #     return 0
         
         
