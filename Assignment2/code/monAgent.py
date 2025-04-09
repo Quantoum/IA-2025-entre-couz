@@ -25,10 +25,15 @@ class monAgent(Agent):
         # Check remaining time first and return a random legal action if time is exhausted
         if remaining_time <= 1:
             print("No more time.")
-            return choice(state.actions())
-        elif remaining_time <= 10:
+            root = AlphaBeta(self.player, max_depth=1)
+            return root.best_action(state)
+        elif 1 < remaining_time <= 10:
             root = AlphaBeta(self.player, max_depth=4)
             return root.best_action(state)
+        elif 10 < remaining_time <= 50:
+            root = AlphaBeta(self.player, max_depth=6)
+            return root.best_action(state)
+        
         elif state.turn < 10 and self.number_of_registered_moves*2 > state.turn:
             return self.start_game(state)
         elif state.turn < 10:
@@ -38,7 +43,7 @@ class monAgent(Agent):
             try:
                 # Create the MCTS node with the current state
                 #root = MonteCarloTreeSearchNode(state=state, player=self.player, max_iterations=MAX_MCTS_ITERATIONS)
-                root = AlphaBeta(self.player, max_depth=6)
+                root = AlphaBeta(self.player, max_depth=7)
                 # Get the best action using best_action()
                 selected_node = root.best_action(state)
                 
@@ -166,7 +171,6 @@ class AlphaBeta:
         score = 0
         score += 3 * self.materialHeuristic(state) # 10 because it forces the player to recreate a king
         score += 1 * self.positionalHeuristic(state)
-        score += 1 * self.timeManaging(state)
         return score
     
     def materialHeuristic(self, state):
@@ -213,8 +217,5 @@ class AlphaBeta:
                 if position in border_positions:
                     on_border += 1
         return on_border
-    
-    def timeManaging(self, state):
-        # number of pieces on the board
-        return 0
+
     
