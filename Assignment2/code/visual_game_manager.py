@@ -5,9 +5,8 @@ import random
 import threading
 import time
 from copy import deepcopy
-from agent import Agent
 from random_agent import RandomAgent
-from monAgent import monAgent
+from monAgent import Agent
 
 class VisualGameManager:
     """
