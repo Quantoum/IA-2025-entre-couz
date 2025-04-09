@@ -7,7 +7,6 @@ import time
 from copy import deepcopy
 from agent import Agent
 from random_agent import RandomAgent
-from hybrid_agent import HybridAgent
 
 class VisualGameManager:
     """
@@ -271,7 +270,7 @@ class VisualGameManager:
 
 
 if __name__ == "__main__":
-    agent_1 = HybridAgent(player=1)
-    agent_2 = HybridAgent(player=-1)
+    agent_1 = Agent(player=1)
+    agent_2 = Agent(player=-1)
     instance = VisualGameManager(red_agent=agent_1, black_agent=agent_2)
     instance.play()

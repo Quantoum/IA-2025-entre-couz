@@ -9,19 +9,33 @@ import random
 import fenix
 import math
 
+from trans_table import TranspositionTable
+
 class AlphaBeta:
     def __init__(self, player, max_depth=float('inf')):
         self.player = player
         self.max_depth = max_depth
-        self.transposition_table = {}
+        self.transposition_table = TranspositionTable()
 
-    def alpha_beta_search(self, state):
+    def alpha_beta_search(self, state, depth, alpha, beta):
+        hash_key = self.transposition_table.compute_hash(state)
+        entry = self.transposition_table.get(hash_key, depth, alpha, beta)
+        if entry:
+            return entry['best_move']  # Use cached move
+
         action = None
         if state.to_move() == self.player:
             _, action = self.max_value(state, -float('inf'), float('inf'), 0)
         else:
             _, action = self.min_value(state, -float('inf'), float('inf'), 0)
-        return action
+
+        flag = TranspositionTable.EXACT
+        if value <= alpha:
+            flag = TranspositionTable.UPPER_BOUND
+        elif value >= beta:
+            flag = TranspositionTable.LOWER_BOUND
+        self.transposition_table.put(hash_key, value, depth, flag, best_move)
+        return best_move
 
     def max_value(self, state, alpha, beta, depth):
         

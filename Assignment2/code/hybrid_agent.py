@@ -1,172 +1,149 @@
 #!/usr/bin/env python3
 """
-Enhanced Hybrid Agent for Fenix Game
+Hybrid Agent for Fenix Game
 Integrates Monte Carlo Tree Search with Alpha-Beta pruning
 """
 
 import time
-import math
-import os
 import random
-from typing import Optional, List, Dict, Tuple, Any
 
 import numpy as np
-from numpy import argmax, sqrt, log
+from numpy import argmax, sqrt, log, array, sum
 
 from mcts import MonteCarloTreeSearchNode
 from alpha_beta import AlphaBeta
 from consts import EXPLO_CHILD_CONST, MAX_MCTS_ITERATIONS
 from fenix import FenixAction
+from trans_table import TranspositionTable
 
-class EnhancedMCTSNode(MonteCarloTreeSearchNode):
-    """
-    Enhanced MCTS Node that uses Alpha-Beta pruning for rollouts and evaluations
-    """
-    def __init__(self, state, player, alpha_beta_instance, 
+
+class BetterMCTSNode(MonteCarloTreeSearchNode):
+    def __init__(self, state, player, alpha_beta, 
                  parent=None, parent_action=None, max_iterations=MAX_MCTS_ITERATIONS,
                  exploration_weight=sqrt(2), rollout_depth=3, time_limit=None):
-        """
-        Initialize an enhanced MCTS node
-        
-        Parameters:
-            state: current game state
-            player: player to move (1 or -1)
-            alpha_beta_instance: instance of AlphaBeta to use for rollouts
-            parent: parent node
-            parent_action: action taken from parent to reach this node
-            max_iterations: maximum number of iterations for MCTS
-            exploration_weight: exploration weight for UCT
-            rollout_depth: depth of Alpha-Beta search in rollouts
-            time_limit: maximum time allowed for search (in seconds)
-        """
         super().__init__(state, player, parent, parent_action, max_iterations)
-        self.alpha_beta = alpha_beta_instance
+        self.alpha_beta = alpha_beta
         self.exploration_weight = exploration_weight
         self.rollout_depth = rollout_depth
         self.time_limit = time_limit
         self.start_time = time.time() if time_limit else None
 
     def is_time_up(self):
-        """Check if the allocated time is up"""
-        if self.time_limit is None or self.start_time is None:
-            return False
+        """Check if the allocated time is finished"""
         return (time.time() - self.start_time) >= self.time_limit
+    
     def rollout(self):
         """
-        Enhanced rollout that uses Alpha-Beta for short-term tactical evaluation
+            Alpha-Beta for short-term tactical evaluation
         """
-        # If state is terminal, return the actual utility
+        # if terminal state -> return utility
         if self.state.is_terminal():
             result = self.state.utility(self.player)
             return result
             
-        # For non-terminal states, use Alpha-Beta evaluation
-        try:
-            # Set a low depth for quick tactical evaluation
-            self.alpha_beta.max_depth = self.rollout_depth
-            
-            # Do a quick Alpha-Beta search to evaluate the state
-            ab_value = self.alpha_beta.heuristics(self.state)
-            
-            # Convert the AB evaluation to a normalized result between -1 and 1
-            result = self._normalize_value(ab_value)
-            return result
-            
-        except Exception as e:
-            print(f"Warning: Error in enhanced rollout: {e}. Falling back to standard rollout.")
-            # Fall back to standard rollout
-            return super().rollout()
+        # non-terminal -> alpha-beta
+
+        # set depth
+        self.alpha_beta.max_depth = self.rollout_depth
+        
+        # alpha-beta
+        ab_value = self.alpha_beta.heuristics(self.state)
+        
+        # normalize value to set between -1 and 1
+        result = self._normalize_value(ab_value)
+        return result
     
     def _normalize_value(self, value):
         """
         Convert an Alpha-Beta evaluation to a result between -1 and 1
         """
-        # Assuming values are typically between -1000 and 1000
-        # Scale down to -1 to 1 range
-        MAX_VALUE = 1000.0
-        return max(min(value / MAX_VALUE, 1.0), -1.0)
+        # assume values are between -1000 and 1000
+        
+        return max(min(value / MAX_NORMALIZE_VALUE, 1.0), -1.0)
     
     def rollout_policy(self, possible_moves):
         """
-        Enhanced rollout policy that uses heuristics to guide the selection
+        Better rollout policy that uses heuristics to guide the selection
         """
+        # erro handling
         if not possible_moves:
             return None
             
-        # If we're running out of time, use random selection
-        if self.is_time_up() or len(possible_moves) > 20:
+        # no time, get random to survive !
+        if self.is_time_up() or len(possible_moves) > MAX_POSSIBLE_MOVE_RANDOM:
             return random.choice(possible_moves)
         
-        # Evaluate each move using a lightweight heuristic
+        # evaluate with heuristic
         move_values = []
         adjusted_values = []
         
         for move in possible_moves:
+            # sometimes it bugs, so try-except resolves this. But the moves_values.append(0) is maybe not good, even if it's neutral
             try:
                 next_state = self.state.result(move)
-                # Use material and positional heuristics
-                material_value = self.alpha_beta.materialHeuristic(next_state)
-                positional_value = self.alpha_beta.positionalHeuristic(next_state)
-                value = 3 * material_value + positional_value
+                m_value = self.alpha_beta.materialHeuristic(next_state)
+                p_value = self.alpha_beta.positionalHeuristic(next_state)
+                value = 3 * m_value + p_value
                 move_values.append(value)
             except Exception as e:
                 print(f"Warning: Error evaluating move {move}: {e}")
-                move_values.append(0)  # Neutral evaluation on error
+                move_values.append(0)  # neutral
         
-        # If all evaluations failed, use random selection
+        # if all eval failed -> use random selection
         if not move_values or all(v == 0 for v in move_values):
             return random.choice(possible_moves)
             
-        # Scale values to positive weights for selection
+        # weighted randomness -> avoid local optima, exploration, compensate innacuracies in heuristic
         min_val = min(move_values)
         max_val = max(move_values)
         
-        # If all values are the same, choose randomly
+        # all same values -> choose randomly -> optimized to avoid this ?
         if max_val == min_val:
             return random.choice(possible_moves)
             
-        # Scale values to positive weights for selection
+        # weighted random selection
+        # normalize into positive range -> probabilistic selection
+        # no negative weights (it would broke the probability)
+        # reduce dominance from extreme
         for value in move_values:
-            if self.player == 1:  # Maximize for player 1
+            if self.player == 1:
                 adjusted_values.append(value - min_val + 1)
-            else:  # Minimize for player -1
+            else:
                 adjusted_values.append(max_val - value + 1)
         
-        # Use weights for weighted random selection
-        total = sum(adjusted_values)
-        probabilities = [v/total for v in adjusted_values]
+        return random.choice(possible_moves, weights=adjusted_values)[0]
     
     def best_child(self, c_param=None):
         """
-        Enhanced best child selection using UCB1 with adjustable exploration weight
+        Better best child selection using UCB1 with adjustable exploration weight
         """
         if c_param is None:
             c_param = self.exploration_weight
             
-        # Check for terminal child nodes first
+        # terminal nodes
         for child in self.children:
-            if child.state.is_terminal() and child.state.utility(self.player) == 1:
+            if child.state.is_terminal() and child.state.utility(self.player) == 1: # make sure we win !
                 return child
         
-        # Compute UCB scores with optional adjustments
+        # compute UCB
         choices_weights = []
         for c in self.children:
             if c.n() == 0:
-                # Unexplored nodes get a high priority
+                # unexplored nodes get a high priority
                 choices_weights.append(EXPLO_CHILD_CONST)
             else:
-                # UCB1 formula with possible value transformation
+                # UCB1 formula
                 exploitation = c.q() / c.n()
                 exploration = c_param * sqrt(2 * log(self.n()) / c.n())
                 
-                # For late game, reduce exploration and focus on exploitation
-                if self.state.turn >= 30:  # Late game adjustment
+                # late game -> reduce exploration and focus on exploitation
+                if self.state.turn >= LATE_GAME_LIMIT:  # Late game adjustment
                     exploration *= 0.5
                     
                 weight = exploitation + exploration
                 choices_weights.append(weight)
                 
-        # Pick the child with the highest score
+        # pick the child w/ highest score
         if not choices_weights:
             print("No children to select from in best_child!")
             return None
@@ -175,19 +152,19 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
     
     def _tree_policy(self):
         """
-        Enhanced tree policy with time management
+        Better tree policy with time management
         """
         current_node = self
         depth = 0
-        max_depth = 50  # Prevent excessive depth
         
-        while not current_node.is_terminal_node() and depth < max_depth:
+        while not current_node.is_terminal_node() and depth < MAX_DEPTH:
             depth += 1
             
-            # Check time limit
+            # check time limit
             if self.is_time_up():
                 return current_node
                 
+            # expand
             if not current_node.is_fully_expanded():
                 return current_node.expand()
             else:
@@ -200,17 +177,18 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
     
     def best_action(self):
         """
-        Enhanced best action selection with time management
+        Better best action selection with time management
         """
         remaining_iterations = self.max_iterations
         iteration = 0
         
         while iteration < remaining_iterations:
-            # Check time limit
+            # check time limit
             if self.is_time_up():
                 break
                 
-            try:
+            try: # sometimes mcts errors so this prevent erros
+                #DOCS: ()["MCTS Deep Dive.pdf"]
                 # 1: Selection and expansion
                 v = self._tree_policy()
                 
@@ -223,61 +201,49 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
                 iteration += 1
             except Exception as e:
                 print(f"Error in MCTS iteration {iteration}: {e}")
-                # Skip this iteration on error but continue the search
+                # skip this iteration but continue search
                 iteration += 1
         
-        # If we didn't complete any iterations, expand once
+        # if we didn't complete any iterations, expand once
         if iteration == 0 and not self.children:
-            try:
-                self.expand()
-            except Exception as e:
-                print(f"Error expanding root node: {e}")
+            self.expand()
         
-        # If we have no children, return self (should not happen normally)
+        # if there is no children, return self
         if not self.children:
-            print("No children generated during MCTS search!")
+            print("No children during MCTS search")
             return self
             
-        # Get the best child based on visit count for the final move choice
-        visits = np.array([child.n() for child in self.children])
+        # get the best child (visit count) for final move choice
+        visits = array([child.n() for child in self.children])
         
-        # Check if we have any visited children
-        if np.sum(visits) == 0:
-            # If no visits, choose randomly among children
-            print("No child nodes have been visited during search!")
+        # check if we have any visited children
+        if sum(visits) == 0:
+            # if no visits, choose randomly among children
             best_child = random.choice(self.children)
         else:
             # Choose the child with the most visits
-            best_child = self.children[np.argmax(visits)]
+            best_child = self.children[argmax(visits)]
             
+        return best_child
         # Strategy selection thresholds
     
+class HybridAgent:
     def __init__(self, player):
         self.player = player
         
-        # Shared transposition table
+        # transposition table
         self.trans_table = TranspositionTable(max_size=MAX_SIZE_TRANSPOSITION)
         
-        # Strategy selection thresholds
-        
-        # Complexity thresholds
-        self.LOW_COMPLEXITY_THRESHOLD = 8   # <= 8 moves is low complexity
-        self.MID_COMPLEXITY_THRESHOLD = 15  # <= 15 moves is medium complexity
-        # > 15 moves is high complexity
-        
-        # Time thresholds
-        self.CRITICAL_TIME_THRESHOLD = 1    # <= 1s is critical
-        self.LOW_TIME_THRESHOLD = 5         # <= 5s is low
-        self.MEDIUM_TIME_THRESHOLD = 20     # <= 20s is medium
-        # > 20s is high
-        
-        # Performance tracking
+        # performance tracking
         self.strategy_history = []
         self.time_usage_history = []
         self.last_execution_time = 0
         
-        # Opening book (predetermined moves)
-        self.opening_book = self._create_opening_book()
+        self.opening_book = None
+
+        # predetermined moves
+        if PREDETERMINED_START:
+            self.opening_book = self._create_opening_book()
         
         
     def _create_opening_book(self):
@@ -285,12 +251,8 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
         Create an opening book with predetermined moves for the first few turns.
         Returns a dictionary mapping turn number to a FenixAction.
         """
-        # Opening book structure
-        # Key: turn number
-        # Value: tuple of (start_pos, end_pos)
-        
-        # First 10 moves for both players
-        if self.player == 1:  # Red player
+        # first 10 moves
+        if self.player == 1:  # red player
             return {
                 0: ((1,0),(0,0)),  # Move general towards the corner
                 2: ((0,1),(0,0)),  # Move king on top of general in corner
@@ -298,7 +260,7 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
                 6: ((0,2),(0,3)),  # Move general to middle border
                 8: ((1,2),(2,2)),  # Move another general outward
             }
-        else:  # Black player
+        else:  # black player
             return {
                 1: ((5,7),(6,7)),  # Move general towards the corner
                 3: ((6,6),(6,7)),  # Move king on top of general in corner
@@ -310,67 +272,57 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
     def determine_game_phase(self, state):
         """
         Determine the current game phase based on turn number and board state.
-        
-        Returns:
-            str: 'opening', 'early', 'mid', or 'late'
         """
         # Check if we're in the opening phase (first few moves)
-        if state.turn in self.opening_book:
+        if PREDETERMINED_START and state.turn in self.opening_book:
             return 'opening'
             
         # Early game classification
-        if state.turn < self.EARLY_GAME_THRESHOLD:
+        if state.turn < EARLY_GAME_THRESHOLD:
             return 'early'
             
         # Late game classification
-        if state.turn >= self.LATE_GAME_THRESHOLD:
+        if state.turn >= LATE_GAME_THRESHOLD:
             return 'late'
             
         # Mid game classification
-        if state.turn >= self.MID_GAME_THRESHOLD:
+        if state.turn >= MID_GAME_THRESHOLD:
             return 'mid'
             
-        # Default to early game if nothing else matches
-        return 'early'
         
     def evaluate_complexity(self, state):
         """
         Evaluate the complexity of the position based on number of legal moves
         and board structure.
-        
-        Returns:
-            str: 'low', 'medium', or 'high'
         """
         legal_moves = state.actions()
         num_moves = len(legal_moves)
         
-        # Basic complexity based on move count
-        if num_moves <= self.LOW_COMPLEXITY_THRESHOLD:
+        # complexity based on move count
+        if num_moves <= LOW_COMPLEXITY_THRESHOLD:
             complexity = 'low'
-        elif num_moves <= self.MID_COMPLEXITY_THRESHOLD:
+        elif num_moves <= MID_COMPLEXITY_THRESHOLD:
             complexity = 'medium'
         else:
             complexity = 'high'
             
-        # Adjust complexity based on piece count
+        # adjust complexity based on piece count
         piece_count = len(state.pieces)
         if piece_count <= 5:  # Very few pieces left
-            complexity = 'low'  # Endgame tablebase territory
+            complexity = 'low'  # Endgame tablebase territoryµ
+        # not especially high complexity with lot of pieces !!!
             
         return complexity
         
     def evaluate_time_situation(self, remaining_time):
         """
         Evaluate the time situation.
-        
-        Returns:
-            str: 'critical', 'low', 'medium', or 'high'
         """
-        if remaining_time <= self.CRITICAL_TIME_THRESHOLD:
+        if remaining_time <= CRITICAL_TIME_THRESHOLD:
             return 'critical'
-        elif remaining_time <= self.LOW_TIME_THRESHOLD:
+        elif remaining_time <= LOW_TIME_THRESHOLD:
             return 'low'
-        elif remaining_time <= self.MEDIUM_TIME_THRESHOLD:
+        elif remaining_time <= MEDIUM_TIME_THRESHOLD:
             return 'medium'
         else:
             return 'high'
@@ -389,31 +341,31 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
         time_situation = self.evaluate_time_situation(remaining_time)
         
         
-        # Opening book moves take precedence if available
+        # opening book moves take precedence if available
         if game_phase == 'opening':
             return {
                 'name': 'opening',
                 'params': {}
             }
             
-        # Critical time situation - use fast approach
+        # critical time -> random -> optimize to put this code near call
         if time_situation == 'critical':
             return {
                 'name': 'random',
                 'params': {}
             }
             
-        # Low time situation - use fast alpha-beta
+        # low time situation -> use fast alpha-beta
         if time_situation == 'low':
             return {
                 'name': 'alpha_beta',
                 'params': {
-                    'max_depth': 3,
-                    'time_limit': remaining_time * 0.8
+                    'max_depth': MAX_DEPTH_A_B_LOW_TIME,
+                    'time_limit': remaining_time * 0.8 # avoid timing out (allocate only 80% of time)
                 }
             }
             
-        # Strategy selection based on game phase and complexity
+        # early game
         if game_phase == 'early':
             if complexity == 'low':
                 # Low complexity early positions - deep alpha-beta
@@ -425,7 +377,7 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
                     }
                 }
             else:
-                # Higher complexity early positions - balanced approach
+                # higher complexity -> mcts
                 return {
                     'name': 'mcts',
                     'params': {
@@ -436,7 +388,7 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
                 }
         elif game_phase == 'mid':
             if complexity == 'high':
-                # High complexity mid-game - MCTS excels here
+                # high complexity mid game -> mcts !
                 return {
                     'name': 'mcts',
                     'params': {
@@ -447,7 +399,7 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
                     }
                 }
             else:
-                # Lower complexity mid-game - alpha-beta
+                # lower complexity mid-game -> alpha-beta
                 return {
                     'name': 'alpha_beta',
                     'params': {
@@ -457,7 +409,7 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
                 }
         else:  # late game
             if complexity == 'low':
-                # Low complexity endgame - deep alpha-beta
+                # low complexity endgame - deep alpha-beta
                 return {
                     'name': 'alpha_beta',
                     'params': {
@@ -466,23 +418,20 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
                     }
                 }
             else:
-                # Higher complexity endgame - MCTS with exploitative focus
+                # higher complexity endgame - mcts exploitation
                 return {
                     'name': 'mcts',
                     'params': {
                         'max_iterations': MAX_MCTS_ITERATIONS,
                         'rollout_depth': 4,
                         'time_limit': remaining_time * 0.8,
-                        'exploration_weight': 0.8  # Less exploration, more exploitation in endgame
+                        'exploration_weight': EXPLORATION_WEIGHT_END_GAME  # less exploration and more exploitation in endgame
                     }
                 }
                 
     def execute_opening_move(self, state):
         """
         Execute a move from the opening book.
-        
-        Returns:
-            FenixAction: The selected opening book move
         """
         # Get the predetermined move
         move_tuple = self.opening_book.get(state.turn)
@@ -492,15 +441,14 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
             
         start_pos, end_pos = move_tuple
         
-        # Create the action
         action = FenixAction(start_pos, end_pos, removed=frozenset())
         
-        # Verify if the move is valid
+        # verify validity
         legal_moves = state.actions()
         if action in legal_moves:
             return action
             
-        # If the move is not valid, fall back to Alpha-Beta
+        # not valid move -> A-B
         print(f"Opening book move {action} not valid, falling back to Alpha-Beta")
         return self.execute_alpha_beta(state, {'max_depth': 4})
         
@@ -508,33 +456,24 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
         """
         Execute a random move selection (for critical time situations).
         
-        Returns:
-            FenixAction: A randomly selected legal move
         """
         legal_moves = state.actions()
         if not legal_moves:
-            print("No legal moves available!")
-            return None
+            raise Exception("No legal moves available!")
             
-        # Select a random move
+        # select a random move
         action = random.choice(legal_moves)
         return action
         
     def execute_alpha_beta(self, state, params):
         """
         Execute Alpha-Beta search with the given parameters.
-        
-        Parameters:
-            state: Current game state
-            params: Dictionary of Alpha-Beta parameters
-            
-        Returns:
-            FenixAction: The selected move
         """
-        # Create Alpha-Beta instance
+        max_depth = params.get('max_depth', 4)
+        time_limit = params.get('time_limit', None)
         alpha_beta = AlphaBeta(self.player, max_depth=max_depth)
+        alpha_beta.transposition_table = self.trans_table
         
-        # Set up timer if needed
         start_time = time.time()
         
         try:
@@ -544,104 +483,74 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
             elapsed = time.time() - start_time
             if time_limit and elapsed > time_limit:
                 print(f"Warning: Alpha-Beta exceeded time limit: {elapsed:.2f}s > {time_limit:.2f}s")
-                
-            
-            
-            # Update the transposition table from Alpha-Beta
-
-            return action
-            # Fall back to simpler search
-            try:
-                print("Falling back to simplified Alpha-Beta search")
-                alpha_beta.max_depth = 2
+                # fall back to easier search
+                alpha_beta.max_depth = MAX_DEPTH_A_B_LOW_TIME
                 action = alpha_beta.best_action(state)
-                return action
-            except Exception as e2:
-                print(f"Simplified Alpha-Beta search also failed: {e2}")
-                # Ultimate fallback - random move
-                return self.execute_random(state)
+            
+            return action
+            
+        except Exception as e:
+            print(f"Error in Alpha-Beta search: {e}")
+            return self.execute_random(state)
     
     def execute_mcts(self, state, params):
         """
         Execute MCTS search with the given parameters.
-        
-        Parameters:
-            state: Current game state
-            params: Dictionary of MCTS parameters
-            
-        Returns:
-            FenixAction: The selected move
         """
         max_iterations = params.get('max_iterations', MAX_MCTS_ITERATIONS)
         rollout_depth = params.get('rollout_depth', 3)
         time_limit = params.get('time_limit', None)
         exploration_weight = params.get('exploration_weight', sqrt(2))
-
         
-        # Create Alpha-Beta instance for rollouts
+        # a-b for rollout
         alpha_beta = AlphaBeta(self.player, max_depth=rollout_depth)
-        alpha_beta.transposition_table = self.trans_table.table
+        alpha_beta.transposition_table = self.trans_table
         
         try:
-        alpha_beta = AlphaBeta(self.player, max_depth=rollout_depth)
-        
-        try:
-                alpha_beta_instance=alpha_beta,
-                trans_table=self.trans_table,
-                max_iterations=max_iterations,
+            # create mcts root
+            mcts_root = BetterMCTSNode(
+                state=state,
                 player=self.player,
-                alpha_beta_instance=alpha_beta,
+                alpha_beta=alpha_beta,
                 max_iterations=max_iterations,
                 rollout_depth=rollout_depth,
                 time_limit=time_limit,
                 exploration_weight=exploration_weight
-            selected_node = mcts_root.best_action()
-            elapsed = time.time() - start_time
+            )
             
-            # Extract the action from the selected node
+            # get best action
+            selected_node = mcts_root.best_action()
+            
+            # extract action from the selected node
             action = selected_node.parent_action
             
             return action
             
-        except RecursionError as e:
-            print(f"RecursionError in MCTS: {e}")
-            # Fall back to Alpha-Beta
-            print("Falling back to Alpha-Beta due to recursion error")
-            return self.execute_alpha_beta(state, {'max_depth': 4, 'time_limit': time_limit})
-            
         except Exception as e:
             print(f"MCTS failed: {e}")
             # Fall back to Alpha-Beta
-            print("Falling back to Alpha-Beta due to general error")
+            print("Falling back to Alpha-Beta due to unknown error")
             return self.execute_alpha_beta(state, {'max_depth': 3, 'time_limit': time_limit})
     
     def act(self, state, remaining_time):
         """
-        Main method to choose an action for the current state with the given time constraint.
-        
-        Parameters:
-            state: Current game state
-            remaining_time: Time remaining in seconds
-            
-        Returns:
-            FenixAction: The selected move
+        Choose an action for the current state.
         """
         start_time = time.time()
         
-        # Make sure we have legal moves
+        # legal moves
         legal_moves = state.actions()
         if not legal_moves:
             print("No legal moves available!")
             return None
         
         try:
-            # Select strategy
+            # select strategy
             strategy_info = self.select_strategy(state, remaining_time)
             strategy_name = strategy_info['name']
             strategy_params = strategy_info['params']
             
-            
-            # Record strategy choice
+            # record strategy choice
             self.strategy_history.append({
                 'turn': state.turn,
                 'strategy': strategy_name,
@@ -650,7 +559,7 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
                 'num_pieces': len(state.pieces)
             })
             
-            # Execute the selected strategy
+            # execute the selected strategy
             action = None
             if strategy_name == 'opening':
                 action = self.execute_opening_move(state)
@@ -661,28 +570,27 @@ class EnhancedMCTSNode(MonteCarloTreeSearchNode):
             elif strategy_name == 'mcts':
                 action = self.execute_mcts(state, strategy_params)
             else:
-                print(f"Unknown strategy: {strategy_name}")
                 action = self.execute_random(state)
-                
-            # Record execution time
+            
+            # record execution time
             execution_time = time.time() - start_time
             self.last_execution_time = execution_time
             self.time_usage_history.append(execution_time)
             
-            # Print transposition table statistics
+            # print transposition table statistics
             hit_rate = self.trans_table.get_hit_rate()
+            print(f"Transposition table hit rate: {hit_rate:.2%}")
             
             return action
-            # Ultimate fallback - random move
+            
+        except Exception as e:
+            print(f"Error in act method: {e}")
             print("Using random move as ultimate fallback")
             return random.choice(legal_moves)
     
     def get_performance_summary(self):
         """
         Returns a summary of the agent's performance.
-        
-        Returns:
-            dict: Performance summary
         """
         strategy_counts = {}
         for record in self.strategy_history:
