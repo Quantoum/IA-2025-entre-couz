@@ -6,15 +6,15 @@ Integrates Monte Carlo Tree Search with Alpha-Beta pruning
 
 import time
 import random
-
 import numpy as np
+
 from numpy import argmax, sqrt, log, array, sum
 
 from mcts import MonteCarloTreeSearchNode
 from alpha_beta import AlphaBeta
-from consts import *
 from fenix import FenixAction
 from trans_table import TranspositionTable
+from consts import *
 
 
 class BetterMCTSNode(MonteCarloTreeSearchNode):
@@ -111,7 +111,10 @@ class BetterMCTSNode(MonteCarloTreeSearchNode):
             else:
                 adjusted_values.append(max_val - value + 1)
         
-        return random.choice(possible_moves, weights=adjusted_values)[0]
+        # Fix random choice with weights
+        # Use numpy's choice function which supports weights
+        index = np.random.choice(range(len(possible_moves)), p=np.array(adjusted_values)/sum(adjusted_values))
+        return possible_moves[index]
     
     def best_child(self, c_param=None):
         """
@@ -206,7 +209,7 @@ class BetterMCTSNode(MonteCarloTreeSearchNode):
         
         # if we didn't complete any iterations, expand once
         if iteration == 0 and not self.children:
-            self.expand()
+                self.expand()
         
         # if there is no children, return self
         if not self.children:
@@ -226,7 +229,7 @@ class BetterMCTSNode(MonteCarloTreeSearchNode):
             
         return best_child
         # Strategy selection thresholds
-    
+
 class HybridAgent:
     def __init__(self, player):
         self.player = player
@@ -501,7 +504,7 @@ class HybridAgent:
         rollout_depth = params.get('rollout_depth', 3)
         time_limit = params.get('time_limit', None)
         exploration_weight = params.get('exploration_weight', sqrt(2))
-        
+
         # a-b for rollout
         alpha_beta = AlphaBeta(self.player, max_depth=rollout_depth)
         alpha_beta.transposition_table = self.trans_table
@@ -559,6 +562,11 @@ class HybridAgent:
                 'num_pieces': len(state.pieces)
             })
             
+            # print table stats before the search (only once every 5 moves to reduce output)
+            if state.turn % 5 == 0:
+                print(f"\nTurn {state.turn} - Initial TT state:")
+                self.trans_table.print_stats()
+                
             # execute the selected strategy
             action = None
             if strategy_name == 'opening':
@@ -571,15 +579,20 @@ class HybridAgent:
                 action = self.execute_mcts(state, strategy_params)
             else:
                 action = self.execute_random(state)
-            
+                
             # record execution time
             execution_time = time.time() - start_time
             self.last_execution_time = execution_time
             self.time_usage_history.append(execution_time)
             
-            # print transposition table statistics
-            hit_rate = self.trans_table.get_hit_rate()
-            print(f"Transposition table hit rate: {hit_rate:.2%}")
+            # Get detailed TT stats - only print once every 5 moves to avoid clutter
+            if state.turn % 5 == 0:
+                print(f"\nTurn {state.turn} - After search TT state:")
+                self.trans_table.print_stats()
+            else:
+                # Just print the hit rate every move
+                hit_rate = self.trans_table.get_hit_rate()
+                print(f"Transposition table hit rate: {hit_rate:.2%} (Size: {len(self.trans_table.table)}/{self.trans_table.max_size})")
             
             return action
             
