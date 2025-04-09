@@ -1,14 +1,4 @@
 
-#
-# LINFO 1361 - Artificial Intelligence 
-# Fenix game - April 2025
-# Author: Arnaud Ullens, Quentin de Pierpont
-# 
-
-from numpy import argmax, sqrt, log
-from random import choice
-from consts import EXPLO_CHILD_CONST
-
 class MonteCarloTreeSearchNode():
     def __init__(self, state, player, parent=None, parent_action=None, max_iterations=100):
         self.state = state # board state
@@ -114,10 +104,10 @@ class MonteCarloTreeSearchNode():
             else:
                 # UCT for explored nodes
                 exploitation = c.q() / c.n()
-                exploration = c_param * sqrt(2 * log(self.n()) / c.n())
+                exploration = c_param * np.sqrt(2 * np.log(self.n()) / c.n())
                 weight = exploitation + exploration
                 choices_weights.append(weight)
-        return self.children[argmax(choices_weights)]
+        return self.children[np.argmax(choices_weights)]
     
     def rollout_policy(self, possible_moves):
         """
@@ -125,7 +115,7 @@ class MonteCarloTreeSearchNode():
             Can be improved by heuristic, and/or Deep RL !
             @return: the selected move.
         """
-        return choice(possible_moves)
+        return np.random.choice(possible_moves)
 
     def _tree_policy(self):
         """
@@ -156,6 +146,6 @@ class MonteCarloTreeSearchNode():
             reward = v.rollout()
             # 3 : Backpropagation (update statistics up the tree)
             v.backpropagate(reward)
-        best = self.best_child(c_param=sqrt(2))
+        best = self.best_child(c_param=np.sqrt(2))
         return best
     

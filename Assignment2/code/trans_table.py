@@ -1,5 +1,6 @@
 from numpy import random, uint64
 from consts import *
+import numpy as np
 
 _ZOBRIST_INITIALIZED = False
 _zobrist_pieces = None
@@ -73,7 +74,9 @@ class TranspositionTable:
         
         # Ensure the hash key is a Python int, not a numpy int
         if hasattr(hash_key, 'item'):
-            hash_key = hash_key.item()  # Convert numpy types to native Python
+            hash_key = int(hash_key.item())
+        else:
+            hash_key = int(hash_key)
         
         # if the hash is in the table 
         if hash_key in self.table:
@@ -83,7 +86,6 @@ class TranspositionTable:
             self.hits += 1
             
             # Check if the entry is useful:
-            # 1. Entry was searched at least as deep as we need now
             if entry['depth'] >= depth:
                 if entry['flag'] == self.EXACT:
                     # Exact value is always useful
@@ -109,14 +111,16 @@ class TranspositionTable:
         
         # Ensure the hash key is a Python int, not a numpy int
         if hasattr(hash_key, 'item'):
-            hash_key = hash_key.item()  # Convert numpy types to native Python
+            hash_key = int(hash_key.item())
+        else:
+            hash_key = int(hash_key)
         
         # Check if we should replace an existing entry
         replace = True
         if hash_key in self.table:
             old_entry = self.table[hash_key]
             
-            # Don't replace deeper searches with shallower ones
+            # Don't replace deeper searches with less good ones
             if old_entry['depth'] > depth:
                 # Prefer exact values over bounds
                 if old_entry['flag'] == self.EXACT and flag != self.EXACT:
@@ -137,12 +141,16 @@ class TranspositionTable:
         # If table is full, remove least valuable entries
         if len(self.table) >= self.max_size:
             # Simple strategy: Remove a random entry
-            # More advanced would be to track entry age and replace oldest
+            # -> track entry age and replace oldest ?
             keys = list(self.table.keys())
-            # Remove 10% of entries when we reach capacity
+            # remove 10% when reaching end
             num_to_remove = max(1, int(0.1 * self.max_size))
             for _ in range(num_to_remove):
-                self.table.pop(random.choice(keys))
+                # Ensure the key we get from np.random.choice is a valid Python int
+                key_to_remove = np.random.choice(keys)
+                if hasattr(key_to_remove, 'item'):
+                    key_to_remove = int(key_to_remove.item())
+                self.table.pop(key_to_remove, None)  # Use pop with default None to avoid KeyError
         
     def get_hit_rate(self):
         """Calculate the hit rate of the transposition table."""
@@ -217,6 +225,8 @@ class TranspositionTable:
         
         # Ensure the hash key is a Python int, not a numpy int
         if hasattr(hash_key, 'item'):
-            hash_key = hash_key.item()  # Convert numpy types to native Python
+            hash_key = int(hash_key.item())
+        else:
+            hash_key = int(hash_key)
             
         return self.table.get(hash_key)

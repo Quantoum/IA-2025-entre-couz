@@ -22,13 +22,13 @@ LOW_COMPLEXITY_THRESHOLD = 8   # <= 8 moves is low complexity
 # time thresholds
 CRITICAL_TIME_THRESHOLD = 1    # <= 1s is critical
 LOW_TIME_THRESHOLD = 5         # <= 5s is low
-MEDIUM_TIME_THRESHOLD = 20     # <= 20s is medium
+MEDIUM_TIME_THRESHOLD = 50     # <= 20s is medium
 
 PREDETERMINED_START = True     # if the agent start with predetermined moves or not
 
 # Alpha-Beta related constants
-MAX_DEPTH_A_B_LOW_TIME = 2     # Reduced from 3 to 2 for quicker decisions under time pressure
-MAX_DEPTH_A_B_NORMAL = 4       # Standard depth for alpha-beta
+MAX_DEPTH_A_B_LOW_TIME = 3     # Reduced from 3 to 2 for quicker decisions under time pressure
+MAX_DEPTH_A_B_NORMAL = 5       # Standard depth for alpha-beta
 
 EXPLORATION_WEIGHT_END_GAME = 0.8 
 
