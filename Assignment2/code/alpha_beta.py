@@ -1,3 +1,10 @@
+
+#
+# LINFO 1361 - Artificial Intelligence 
+# Fenix game - April 2025
+# Author: Arnaud Ullens, Quentin de Pierpont
+# 
+
 import random
 import fenix
 import math
