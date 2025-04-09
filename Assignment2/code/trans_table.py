@@ -1,4 +1,6 @@
+
 from numpy import random, uint64
+from consts import *
 
 class TranspositionTable:
     """
@@ -19,7 +21,7 @@ class TranspositionTable:
     _zobrist_player = None
     
     def __init__(self, max_size=10000):
-        if not TranspositionTable._zobrist_pieces:
+        if TranspositionTable._zobrist_pieces is None:
             self._init_zobrist_tables()
         self.max_size = max_size
         self.table = {}
@@ -78,28 +80,23 @@ class TranspositionTable:
         return None, None # not found or useless
         
     def put(self, state, depth, value, flag, best_move):
+        """
+        Store a position in the transposition table.
+        """
+        # get the hash 
         hash_key = self.compute_hash(state)
         
-        # Only replace existing entry if new depth is greater
-        existing = self.table.get(hash_key)
-        if existing and (existing['depth'] > depth):
-            return  # Keep deeper entry
-            
-        # Evict LRU if needed
+        # if table is full, remove a random entry -> can be optimized ?
         if len(self.table) >= self.max_size:
-            # Remove least recently used
-            lru_key = self.access_order.pop(0)
-            del self.table[lru_key]
-        
-        # Add new entry
+            self.table.pop(random.choice(list(self.table.keys())))
+            
+        # store entry
         self.table[hash_key] = {
             'depth': depth,
             'value': value,
             'flag': flag,
             'best_move': best_move
         }
-        # Update access order
-        self.access_order.append(hash_key)
         
     def get_hit_rate(self):
         """Calculate the hit rate of the transposition table."""

@@ -5,6 +5,7 @@ EXPLO_CHILD_CONST = 100000
 # Maximum number of iterations for MCTS to avoid deep recursion
 MAX_MCTS_ITERATIONS = 1000
 
+
 MAX_NORMALIZE_VALUE = 1000.0   # maximum 
 MAX_POSSIBLE_MOVE_RANDOM = 30  # if the number of possible move exceeds this, ai plays random
 MAX_SIZE_TRANSPOSITION = 10000 # max size of the transposition table
@@ -26,7 +27,7 @@ CRITICAL_TIME_THRESHOLD = 1    # <= 1s is critical
 LOW_TIME_THRESHOLD = 5         # <= 5s is low
 MEDIUM_TIME_THRESHOLD = 20     # <= 20s is medium
 
-PREDETERMINED_START = False     # if the agent start with predetermined moves or not
+PREDETERMINED_START = True     # if the agent start with predetermined moves or not
 
 MAX_DEPTH_A_B_LOW_TIME = 3     # max depth of alpha-beta when running out of time
 

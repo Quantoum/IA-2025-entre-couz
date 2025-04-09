@@ -12,7 +12,7 @@ from numpy import argmax, sqrt, log, array, sum
 
 from mcts import MonteCarloTreeSearchNode
 from alpha_beta import AlphaBeta
-from consts import EXPLO_CHILD_CONST, MAX_MCTS_ITERATIONS
+from consts import *
 from fenix import FenixAction
 from trans_table import TranspositionTable
 
