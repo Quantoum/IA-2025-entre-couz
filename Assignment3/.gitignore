@@ -1,0 +1,3 @@
+# ignore the python cache files
+
+__pycache__/
