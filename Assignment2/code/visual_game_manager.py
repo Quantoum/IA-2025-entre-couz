@@ -258,13 +258,15 @@ class VisualGameManager:
 
         pygame.display.flip()
 
-    def play(self):
+    def play(self, agents):
         while self.running:
             self.handle_events()
             self.update()
             self.draw()
             self.clock.tick(60)
 
+        for a in agents:
+            print(a.get_performance_summary())
         pygame.quit()
         sys.exit()
 
@@ -272,5 +274,6 @@ class VisualGameManager:
 if __name__ == "__main__":
     agent_1 = RandomAgent(player=1)
     agent_2 = monAgent(player=-1)
+    agent_2 = monAgent(player=-1)
     instance = VisualGameManager(red_agent=agent_1, black_agent=agent_2)
-    instance.play()
+    instance.play([agent_2])

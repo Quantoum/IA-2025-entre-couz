@@ -10,24 +10,92 @@ import numpy as np
 
 from numpy import argmax, sqrt, log, array, sum
 
-from mcts import MonteCarloTreeSearchNode
 from alpha_beta import AlphaBeta
 from fenix import FenixAction
 from trans_table import TranspositionTable
 from consts import *
 
 
-class BetterMCTSNode(MonteCarloTreeSearchNode):
+class BetterMCTSNode:
     def __init__(self, state, player, alpha_beta, 
                  parent=None, parent_action=None, max_iterations=MAX_MCTS_ITERATIONS,
                  exploration_weight=sqrt(2), rollout_depth=3, time_limit=None):
-        super().__init__(state, player, parent, parent_action, max_iterations)
+        self.state = state # board state
+        self.player = player # player that has to move
+        self.parent = parent # None for root node, equals to the node it's derived from/
+        self.parent_action = parent_action # None for root node, equals action which it's parent carried out.
+        self.max_iterations = max_iterations
+        self.children = [] # all possible actions from the current node
+        self._number_of_visits = 0 # number of time a current node is visited (back-propagation)
+        self._results = {}
+        self._results[1] = 0
+        self._results[0] = 0
+        self._results[-1] = 0
+        self._untried_actions = None
+        self._untried_actions = self.untried_actions() # list of all possible actions
         self.alpha_beta = alpha_beta
         self.exploration_weight = exploration_weight
         self.rollout_depth = rollout_depth
         self.time_limit = time_limit
         self.start_time = time.time() if time_limit else None
 
+    def untried_actions(self):
+        """
+            This function gets the list of untried actions from a given state.
+            @return : list of untried actions
+        """
+        self._untried_actions = self.state.actions()
+        return self._untried_actions
+    
+    def q(self):
+        """
+            This function computes the difference between wins and loses.
+            @return : wins - loses
+        """
+        wins = self._results[1]
+        loses = self._results[-1]
+        return wins - loses
+    
+    def n(self):
+        """
+            This function computes the number of times each node is visited.
+            @return: the number of visits
+        """
+        return self._number_of_visits
+    
+    def expand(self):
+        """
+            This function generates the next state (from the present state) depending
+            on the action that has been carried out. 
+            @return: The child node, a.k.a the next state.
+        """
+        if not self._untried_actions:
+            print("Warning: Called expand with no untried actions")
+            return None
+        
+        action = self._untried_actions.pop()
+        next_state = self.state.result(action)
+        child_node = BetterMCTSNode(
+            state=next_state, 
+            player=self.player, 
+            alpha_beta=self.alpha_beta,
+            parent=self, 
+            parent_action=action,
+            max_iterations=self.max_iterations,
+            exploration_weight=self.exploration_weight,
+            rollout_depth=self.rollout_depth,
+            time_limit=self.time_limit
+        )
+        self.children.append(child_node)
+        return child_node
+    
+    def is_terminal_node(self):
+        """
+            This function checks wheter the state is final or not.
+            @return: [bool] current not is terminal.
+        """
+        return self.state.is_terminal()
+    
     def is_time_up(self):
         """Check if the allocated time is finished"""
         return (time.time() - self.start_time) >= self.time_limit
@@ -36,22 +104,65 @@ class BetterMCTSNode(MonteCarloTreeSearchNode):
         """
             Alpha-Beta for short-term tactical evaluation
         """
+        print("called rollout ! ----------------")
         # if terminal state -> return utility
         if self.state.is_terminal():
             result = self.state.utility(self.player)
+            print("final result ? ---------------")
             return result
             
-        # non-terminal -> alpha-beta
+        # Initialize the current state for rollout
+        current_rollout_state = self.state
+        
+        # Perform a limited-depth rollout using the rollout_policy
+        rollout_steps = min(3, self.rollout_depth)  # Limit steps to avoid excessive depth
+        
+        for _ in range(rollout_steps):
+            # Check if we've reached a terminal state during rollout
+            if current_rollout_state.is_terminal():
+                return current_rollout_state.utility(self.player)
+                
+            # Get possible moves and select one using rollout policy
+            possible_moves = current_rollout_state.actions()
+            if not possible_moves:
+                break  # No moves available
+                
+            action = self.rollout_policy(possible_moves)
+            if action is None:
+                break  # Rollout policy failed to select a move
+                
+            # Apply the move
+            current_rollout_state = current_rollout_state.result(action)
+        
+        # After performing rollout steps, evaluate the resulting position
+        if current_rollout_state.is_terminal():
+            # If we reached a terminal state, return its utility
+            return current_rollout_state.utility(self.player)
+        else:
+            # Otherwise, use Alpha-Beta heuristic to evaluate
+            ab_value = self.alpha_beta.heuristics(current_rollout_state)
+            # Normalize the value to be between -1 and 1
+            result = self._normalize_value(ab_value)
+            return result
+        
+    def backpropagate(self, result):
+        """
+            This function computes all the statistics for the nodes that are updated. Until the parent
+            node is reached, the number of visits is incremented. It increment by 1 the number of wins
+            (or losses) depending on the result. Recursive.
+        """
+        self._number_of_visits += 1
+        self._results[result] += 1
+        if self.parent:
+            self.parent.backpropagate(result)
 
-        # set depth
-        self.alpha_beta.max_depth = self.rollout_depth
-        
-        # alpha-beta
-        ab_value = self.alpha_beta.heuristics(self.state)
-        
-        # normalize value to set between -1 and 1
-        result = self._normalize_value(ab_value)
-        return result
+    def is_fully_expanded(self):
+        """
+            This function is checking whether the node is fully expanded or not. All the actions are
+            popped out of _untried_actions one by one. When it's empty, it's fully expanded.
+            @return: whether the node is fully expanded or not.
+        """
+        return len(self._untried_actions) == 0
     
     def _normalize_value(self, value):
         """
@@ -65,10 +176,12 @@ class BetterMCTSNode(MonteCarloTreeSearchNode):
         """
         Better rollout policy that uses heuristics to guide the selection
         """
-        # erro handling
+        print("Entering rollout_policy")
+        # error handling
         if not possible_moves:
             return None
         
+        print(len(possible_moves))
         if len(possible_moves) == 1: # one move possible, no choice
             print("Only one move possible, playing it !")
             return possible_moves[0]
@@ -85,16 +198,24 @@ class BetterMCTSNode(MonteCarloTreeSearchNode):
             # sometimes it bugs, so try-except resolves this. But the moves_values.append(0) is maybe not good, even if it's neutral
             try:
                 next_state = self.state.result(move)
+                # Check if the pieces mentioned in the error exist in the state
+                for removed_pos in move.removed:
+                    if removed_pos not in next_state.pieces:
+                        # Skip computation for positions that don't exist
+                        raise ValueError(f"Position {removed_pos} not found in state")
+                        
                 m_value = self.alpha_beta.materialHeuristic(next_state)
                 p_value = self.alpha_beta.positionalHeuristic(next_state)
                 value = 3 * m_value + p_value
                 move_values.append(value)
             except Exception as e:
+                # More descriptive warning
                 print(f"Warning: Error evaluating move {move}: {e}")
-                move_values.append(0)  # neutral
+                # Instead of 0, use a slightly pessimistic value to discourage choosing erroneous moves
+                move_values.append(-0.1)  # slightly negative, but still in consideration
         
         # if all eval failed -> use random selection
-        if not move_values or all(v == 0 for v in move_values):
+        if not move_values or all(v == -0.1 for v in move_values):
             return random.choice(possible_moves)
             
         # weighted randomness -> avoid local optima, exploration, compensate innacuracies in heuristic
@@ -111,14 +232,30 @@ class BetterMCTSNode(MonteCarloTreeSearchNode):
         # reduce dominance from extreme
         for value in move_values:
             if self.player == 1:
-                adjusted_values.append(value - min_val + 1)
+                adjusted_values.append(max(0, value - min_val + 1))  # Ensure no negative values
             else:
-                adjusted_values.append(max_val - value + 1)
+                adjusted_values.append(max(0, max_val - value + 1))  # Ensure no negative values
         
+        # Safely handle potential divide by zero
+        sum_adjusted = sum(adjusted_values)
+        if sum_adjusted <= 0:
+            return random.choice(possible_moves)
+            
         # Fix random choice with weights
         # Use numpy's choice function which supports weights
-        index = np.random.choice(range(len(possible_moves)), p=np.array(adjusted_values)/sum(adjusted_values))
-        return possible_moves[index]
+        try:
+            # Convert to standard Python types to avoid NumPy issues
+            probs = [float(v)/float(sum_adjusted) for v in adjusted_values]
+            # Simple validation
+            if abs(sum(probs) - 1.0) > 0.01:  # Allow small floating point error
+                print(f"Warning: Probabilities don't sum to 1: {sum(probs)}")
+                return random.choice(possible_moves)
+                
+            index = np.random.choice(range(len(possible_moves)), p=np.array(probs))
+            return possible_moves[index]
+        except Exception as e:
+            print(f"Error in weighted choice: {e}")
+            return random.choice(possible_moves)
     
     def best_child(self, c_param=None):
         """
@@ -197,42 +334,52 @@ class BetterMCTSNode(MonteCarloTreeSearchNode):
             try: # sometimes mcts errors so this prevent erros
                 #DOCS: ()["MCTS Deep Dive.pdf"]
                 # 1: Selection and expansion
+                print("Starting tree policy for iteration", iteration)
                 v = self._tree_policy()
+                print("Completed tree policy")
                 
                 # 2: Simulation
+                print("Starting rollout")
                 reward = v.rollout()
+                print(f"Completed rollout: reward={reward}")
                 
                 # 3: Backpropagation
                 v.backpropagate(reward)
                 
                 iteration += 1
             except Exception as e:
-                print(f"Error in MCTS iteration {iteration}: {e}")
-                # skip this iteration but continue search
+                # Skip this iteration but continue search
                 iteration += 1
         
         # if we didn't complete any iterations, expand once
         if iteration == 0 and not self.children:
-                self.expand()
+            self.expand()
         
         # if there is no children, return self
         if not self.children:
-            print("No children during MCTS search")
+            print("No children generated during MCTS search")
             return self
             
         # get the best child (visit count) for final move choice
-        visits = array([child.n() for child in self.children])
+        # Convert to list first to avoid numpy errors with complex objects
+        children_list = list(self.children)
+        visits_list = [float(child.n()) for child in children_list]
+        
+        print(f"Children visits: {visits_list}")
         
         # check if we have any visited children
-        if sum(visits) == 0:
+        if sum(visits_list) == 0:
             # if no visits, choose randomly among children
-            best_child = random.choice(self.children)
+            random_idx = np.random.randint(0, len(children_list))
+            best_child = children_list[random_idx]
+            print(f"No visits, choosing randomly: {best_child.parent_action}")
         else:
-            # Choose the child with the most visits
-            best_child = self.children[argmax(visits)]
+            # Choose the child with the most visits - use argmax on the visits list
+            best_index = np.argmax(visits_list)
+            best_child = children_list[best_index]
+            print(f"Best child has {visits_list[best_index]} visits: {best_child.parent_action}")
             
         return best_child
-        # Strategy selection thresholds
 
 class HybridAgent:
     def __init__(self, player):
