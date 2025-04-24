@@ -9,6 +9,7 @@ MAX_WALK_LENGTH = 30  # Maximum length of a walk in the levy walk
 MIN_WALK_LENGTH = 2  # Minimum length of a walk in the levy walk
 MU = 1.5  # Levy distribution parameter
 SCALE = 1
+TURNS_TO_REFIND_FOOD_ZONE = 3  # Number of turns to wait before searching for food again
 
 # good terminal input :
 # python gui.py --strategy-file .\AntStrategy_concurrent.py --ants 1 --cell-size 3 --width 25 --height 25
@@ -30,81 +31,60 @@ class ConcurrentStrategy(AntStrategy):
     """
     def __init__(self):
         """Initialize the strategy with last action tracking"""
-        # Track the last action to alternate between movement and pheromone deposit
-        self.ants_last_action = {}  # ant_id -> last_action
         self.next_orientation_list = {}  
         self.forward_motion_counter = {} # list of next movements to do
         self.ant_positions = {}
         self.previously_blocked_on_something = {}
+        self.known_food_zone = {}
+        self.just_arrived_at_previous_food_zone = {}
 
     def decide_action(self, perception: AntPerception) -> AntAction:
         """Decide an action based on current perception"""
 
-        # Get ant's ID to track its actions
-        ant_id = perception.ant_id
-        last_action = self.ants_last_action.get(ant_id, None)
-        action = None
-
         # Priority 1: Pick up food if standing on it
-        if (
-            not perception.has_food
-            and (0, 0) in perception.visible_cells
-            and perception.visible_cells[(0, 0)] == TerrainType.FOOD
-        ):
-            self.ants_last_action[ant_id] = AntAction.PICK_UP_FOOD
+        if (not perception.has_food and perception.visible_cells[(0, 0)] == TerrainType.FOOD):
+            self.known_food_zone[perception.ant_id] = self.ant_positions.get(perception.ant_id)
             return AntAction.PICK_UP_FOOD
 
         # Priority 2: Drop food if at colony and carrying food
-        if (
-            perception.has_food
-            and TerrainType.COLONY in perception.visible_cells.values()
-        ):
-            for pos, terrain in perception.visible_cells.items():
-                if terrain == TerrainType.COLONY:
-                    if pos == (0, 0):  # Directly on colony
-                        self.ants_last_action[ant_id] = AntAction.DROP_FOOD
-                        return AntAction.DROP_FOOD
+        if (perception.has_food and perception.visible_cells[(0,0)] == TerrainType.COLONY):
+            return AntAction.DROP_FOOD
 
-        # priority 1: find the food 
+        # Priority 3: Search for food if not carrying food
         if not perception.has_food :
+
+            # print("previous food zone: ", self.just_arrived_at_previous_food_zone.get(perception.ant_id, 0))
             if perception.can_see_food():
-                action = self.go_to_something(perception)
+                action = self.go_to_something(perception, TerrainType.FOOD)  
+            # if known food zone, go to it
+            elif self.known_food_zone.get(perception.ant_id, None) is not None:
+                # if we are at the position of the food, we remove it from the list
+                if self.ant_positions.get(perception.ant_id) == self.known_food_zone[perception.ant_id]:
+                    del self.known_food_zone[perception.ant_id]
+                    action = AntAction.TURN_RIGHT # turn left to search for food again
+                    self.just_arrived_at_previous_food_zone[perception.ant_id] = TURNS_TO_REFIND_FOOD_ZONE # wait x turns before searching for food again
+
+                else:
+                    target_x, target_y = self.known_food_zone[perception.ant_id]
+                    action = self.go_to_point(perception, target_x, target_y)
+            elif self.just_arrived_at_previous_food_zone.get(perception.ant_id, 0) > 0:
+                action = AntAction.TURN_RIGHT
+                self.just_arrived_at_previous_food_zone[perception.ant_id] -= 1
             else:
                 action = self.search_for_food(perception)
 
+        # Priority 4: Go to the colony if carrying food
         if perception.has_food :
             action = self.go_to_point(perception, 0, 0) # go to the colony
 
         return action
-
-    def _decide_movement(self, perception: AntPerception) -> AntAction:
-        """Decide which direction to move based on current state"""
-
-        # If has food, try to move toward colony if visible
-        if perception.has_food:
-            for pos, terrain in perception.visible_cells.items():
-                if terrain == TerrainType.COLONY:
-                    if pos[1] > 0:  # Colony is ahead in some direction
-                        return self.go_forward_and_update_coordinate(perception)
-        # If doesn't have food, try to move toward food if visible
-        else:
-            for pos, terrain in perception.visible_cells.items():
-                if terrain == TerrainType.FOOD:
-                    if pos[1] > 0:  # Food is ahead in some direction
-                        return self.go_forward_and_update_coordinate(perception)
-
-        # Random movement if no specific goal
-        movement_choice = random.random()
-
-        if movement_choice < 0.6:  # 60% chance to move forward
-            return self.go_forward_and_update_coordinate(perception)
-        elif movement_choice < 0.8:  # 20% chance to turn left
-            return AntAction.TURN_LEFT
-        else:  # 20% chance to turn right
-            return AntAction.TURN_RIGHT
     
-    def go_to_something(self, perception):
-        pass
+    def go_to_something(self, perception, terrain_type = TerrainType.FOOD):
+        for pos, terrain in perception.visible_cells.items():
+            if terrain == terrain_type:
+                target_x = pos[0] + self.ant_positions.get(perception.ant_id)[0]
+                target_y = pos[1] + self.ant_positions.get(perception.ant_id)[1]
+                return self.go_to_point(perception, target_x, target_y)
 
     def levy_walk(self, scale = 1):
         u = np.random.uniform(0, 1)
@@ -135,6 +115,7 @@ class ConcurrentStrategy(AntStrategy):
             direction_choosen = random.choice([AntAction.TURN_LEFT, AntAction.TURN_RIGHT])
             direction_steps = random.randint(0, 4) # choose a random number between 0 and 4
             self.next_orientation_list[ant_id] = [direction_choosen for i in range(direction_steps)]
+            return self.go_forward_and_update_coordinate(perception) # go forward and update the coordinate of the ant
     
     def update_position(self, perception):
         if (not self.blocked_on_something(perception)):
@@ -145,7 +126,7 @@ class ConcurrentStrategy(AntStrategy):
             dx, dy = perception.direction.get_delta(perception.direction)
             self.ant_positions[ant_id] = (x + dx, y + dy)
             if ant_id == 1:
-                print("Ant position: ", self.ant_positions[ant_id])
+                # print("Ant position: ", self.ant_positions[ant_id])
                 pass
 
     def blocked_on_something(self, perception):
