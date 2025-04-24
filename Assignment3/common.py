@@ -83,10 +83,10 @@ class AntPerception:
         self.ant_id = None
 
     def can_see_food(self) -> bool:
-        return TerrainType.FOOD.value in [cell for cell in self.visible_cells.values()]
+        return TerrainType.FOOD in [cell for cell in self.visible_cells.values()]
 
     def can_see_colony(self) -> bool:
-        return TerrainType.COLONY.value in [
+        return TerrainType.COLONY in [
             cell for cell in self.visible_cells.values()
         ]
 
