@@ -5,6 +5,11 @@ import numpy as np
 from environment import TerrainType, AntPerception, Direction
 from ant import AntAction, AntStrategy
 
+MAX_WALK_LENGTH = 30  # Maximum length of a walk in the levy walk
+MIN_WALK_LENGTH = 2  # Minimum length of a walk in the levy walk
+MU = 1.5  # Levy distribution parameter
+SCALE = 1
+
 # good terminal input :
 # python gui.py --strategy-file .\AntStrategy_concurrent.py --ants 1 --cell-size 3 --width 25 --height 25
 
@@ -27,8 +32,10 @@ class ConcurrentStrategy(AntStrategy):
         """Initialize the strategy with last action tracking"""
         # Track the last action to alternate between movement and pheromone deposit
         self.ants_last_action = {}  # ant_id -> last_action
-        self.next_movement_list = {}  # list of next movements to be done
-        self.ant_positions = {i: (0, 0) for i in range(1, 11)}
+        self.next_orientation_list = {}  
+        self.forward_motion_counter = {} # list of next movements to do
+        self.ant_positions = {}
+        self.previously_blocked_on_something = {}
 
     def decide_action(self, perception: AntPerception) -> AntAction:
         """Decide an action based on current perception"""
@@ -36,20 +43,7 @@ class ConcurrentStrategy(AntStrategy):
         # Get ant's ID to track its actions
         ant_id = perception.ant_id
         last_action = self.ants_last_action.get(ant_id, None)
-    
-        # # priority 1: find the food 
-        # if not perception.has_food :
-        #     if not perception.can_see_food(): 
-        #         if self.next_movement_list == []:
-        #             step_length = self.levy_walk()
-
-        #     # if the ant is not carrying food and cannot see food, do a levy walk
-        #     step_length = self.levy_walk()
-        #     angle = random.uniform(0, 2 * np.pi)
-        #     dx = step_length * np.cos(angle)
-        #     dy = step_length * np.sin(angle)
-        #     next_movement_list.append((dx, dy))
-
+        action = None
 
         # Priority 1: Pick up food if standing on it
         if (
@@ -71,22 +65,16 @@ class ConcurrentStrategy(AntStrategy):
                         self.ants_last_action[ant_id] = AntAction.DROP_FOOD
                         return AntAction.DROP_FOOD
 
-        # Alternate between movement and dropping pheromones
-        # If last action was not a pheromone drop, drop pheromone
-        if last_action not in [
-            AntAction.DEPOSIT_HOME_PHEROMONE,
-            AntAction.DEPOSIT_FOOD_PHEROMONE,
-        ]:
-            if perception.has_food:
-                self.ants_last_action[ant_id] = AntAction.DEPOSIT_FOOD_PHEROMONE
-                return AntAction.DEPOSIT_FOOD_PHEROMONE
+        # priority 1: find the food 
+        if not perception.has_food :
+            if perception.can_see_food():
+                action = self.go_to_something(perception)
             else:
-                self.ants_last_action[ant_id] = AntAction.DEPOSIT_HOME_PHEROMONE
-                return AntAction.DEPOSIT_HOME_PHEROMONE
+                action = self.search_for_food(perception)
 
-        # Otherwise, perform movement
-        action = self._decide_movement(perception)
-        self.ants_last_action[ant_id] = action
+        if perception.has_food :
+            action = self.go_to_point(perception, 0, 0) # go to the colony
+
         return action
 
     def _decide_movement(self, perception: AntPerception) -> AntAction:
@@ -114,51 +102,90 @@ class ConcurrentStrategy(AntStrategy):
             return AntAction.TURN_LEFT
         else:  # 20% chance to turn right
             return AntAction.TURN_RIGHT
+    
+    def go_to_something(self, perception):
+        pass
 
     def levy_walk(self, scale = 1):
-        return scale * 1 / np.random.uniform(0, 1)
+        u = np.random.uniform(0, 1)
+        step_length = SCALE * (1.0 / (u ** (1.0 / (MU - 1))))
+        walk_length = max(min(MAX_WALK_LENGTH, int(step_length)), MIN_WALK_LENGTH)
+        return walk_length
+                                                 
+    def search_for_food(self, perception):
+        ant_id = perception.ant_id
+
+        if(len(self.next_orientation_list.get(ant_id, [])) != 0): # still orientation to do 
+            # orientate
+            # remove the first element of the list and return it
+            next_orientation = self.next_orientation_list[ant_id].pop()
+            return next_orientation
+        
+        elif(self.forward_motion_counter.get(ant_id, 0) != 0):
+            # move
+            # remove the first element of the list and return it
+            self.forward_motion_counter[ant_id] -= 1
+            action = self.go_forward_and_update_coordinate(perception)
+            return action
+        
+        else: # all list are empty, we need to plan a levy walk
+            walk_length = self.levy_walk()
+            self.forward_motion_counter[ant_id] = walk_length # add the step length to the list of movements
+
+            direction_choosen = random.choice([AntAction.TURN_LEFT, AntAction.TURN_RIGHT])
+            direction_steps = random.randint(0, 4) # choose a random number between 0 and 4
+            self.next_orientation_list[ant_id] = [direction_choosen for i in range(direction_steps)]
     
-    def get_move(self):
-        """Get the next move based on Levy walk"""
-        step_length = self.levy_walk()
-        angle = random.uniform(0, 2 * np.pi)
-        dx = step_length * np.cos(angle)
-        dy = step_length * np.sin(angle)
-        return dx, dy
-    
-    def updtate_position(self, perception):
-        if (len(perception.visible_cells) != 1 and not self.move_diagonal_on_border(perception)):
+    def update_position(self, perception):
+        if (not self.blocked_on_something(perception)):
             # Update the position of the ant
             ant_id = perception.ant_id
 
-            x, y = self.ant_positions[ant_id]
+            x, y = self.ant_positions.get(ant_id, (0, 0))  # Default to (0, 0) if not set
             dx, dy = perception.direction.get_delta(perception.direction)
             self.ant_positions[ant_id] = (x + dx, y + dy)
-            print("Ant position: ", self.ant_positions[ant_id])
-            # print("Ant direction: ", perception.direction)
-            # print("Ant perception: ", perception.visible_cells)
-            # wait for 1 second before moving again
-            # time.sleep(1)
+            if ant_id == 1:
+                print("Ant position: ", self.ant_positions[ant_id])
+                pass
 
-    def move_diagonal_on_border(self, perception):
-        """Move diagonally on the border of the grid"""
-        
-    # [4,3,2] because when the and is on the border of the grid and goes diagonnally, it can see only 4,3,2 cells
-    #     |                                         |
-    #  ooo|A                                        |           
-    #   oo|o                                        |                   
-    #    o|o                                        |
-    #     |o                                       A|ooo
-    #     |                                        o|oo
-    #     |________________________________________o|o
-    #                                              o
-
-        if(len(perception.visible_cells) in [4,3,2]): # means that the ant is on the border of the grid and trying to move out of the grid diagonally
-            if perception.direction in [Direction.NORTHEAST, Direction.NORTHWEST, Direction.SOUTHEAST, Direction.SOUTHWEST]:
-                return True
-        return False
+    def blocked_on_something(self, perception):
+        dx, dy = perception.direction.get_delta(perception.direction)
+        if(perception.visible_cells.get((dx, dy), None) in (None, TerrainType.WALL)):
+            return True
+        else:
+            return False
     
     def go_forward_and_update_coordinate(self, perception):
-        self.updtate_position(perception)
+        """ if we can go forward, we go forward and update the coordinate of the ant """
 
-        return AntAction.MOVE_FORWARD
+        # Check if the ant is blocked on something
+        # If the ant is blocked, turn left
+        if self.blocked_on_something(perception):
+            self.previously_blocked_on_something[perception.ant_id] = True
+            return AntAction.TURN_LEFT
+        
+        # avoid doing stupid turns around the map
+        elif self.previously_blocked_on_something.get(perception.ant_id, False):
+            self.previously_blocked_on_something[perception.ant_id] = False
+            return AntAction.TURN_LEFT
+        
+        else:
+            self.update_position(perception)
+            return AntAction.MOVE_FORWARD
+
+    def go_to_point(self, perception, point_x, point_y):
+        """ go to a point in the map """
+        # get the direction to the point
+        dx = point_x - self.ant_positions.get(perception.ant_id)[0]
+        dy = point_y - self.ant_positions.get(perception.ant_id)[1]
+        # get the direction of the ant
+        goal_direction = perception._get_direction_from_delta(dx, dy)
+        delta_direction = (perception.direction.value - goal_direction) % 8
+
+        # go forward if the direction is already good
+        if delta_direction == 0:
+            return self.go_forward_and_update_coordinate(perception)
+        elif delta_direction <= 4:
+            return AntAction.TURN_LEFT
+        else:
+            return AntAction.TURN_RIGHT
