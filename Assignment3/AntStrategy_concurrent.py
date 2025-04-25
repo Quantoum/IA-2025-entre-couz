@@ -141,7 +141,7 @@ class ConcurrentStrategy(AntStrategy):
     def detect_if_along_wall_right(self, perception):
         # the cell in the front right or front left
         dx1, dy1 = perception.direction.get_delta(Direction.get_right(perception.direction))
-        print("visible cells dx1, dy1: ", perception.visible_cells.get((dx1, dy1), None))
+        
         if perception.visible_cells.get((dx1, dy1), None) in (None, TerrainType.WALL):
            return True
         else:
@@ -216,7 +216,7 @@ class ConcurrentStrategy(AntStrategy):
         dy = target_y - self.ant_positions.get(perception.ant_id)[1]
         goal_dir = perception._get_direction_from_delta(dx, dy)
         step_dx, step_dy = Direction.get_delta(goal_dir)
-        
+
         return perception.visible_cells.get((step_dx, step_dy), None) not in (None, TerrainType.WALL)
 
     
