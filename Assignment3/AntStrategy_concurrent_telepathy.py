@@ -5,7 +5,12 @@ import numpy as np
 from environment import TerrainType, AntPerception, Direction
 from ant import AntAction, AntStrategy
 
-MAX_WALK_LENGTH = 40 # Maximum length of a walk in the levy walk
+# ===============================================================================
+# telepathy because the ants share the same variable for where the food is
+# however, it is not yet implemented
+# ===============================================================================
+
+MAX_WALK_LENGTH = 30  # Maximum length of a walk in the levy walk
 MIN_WALK_LENGTH = 2  # Minimum length of a walk in the levy walk
 MU = 1.5  # Levy distribution parameter
 SCALE = 1
@@ -34,7 +39,7 @@ class ConcurrentStrategy(AntStrategy):
         self.next_orientation_list = {}  
         self.forward_motion_counter = {} # list of next movements to do
         self.ant_positions = {}
-        self.was_blocked_on_something = {}
+        self.previously_blocked_on_something = {}
         self.known_food_zone = {}
         self.just_arrived_at_previous_food_zone = {}
 
@@ -135,23 +140,6 @@ class ConcurrentStrategy(AntStrategy):
             return True
         else:
             return False
-        
-    def detect_if_along_wall_right(self, perception):
-        # the cell in the front right or front left
-        dx1, dy1 = perception.direction.get_delta(Direction.get_right(perception.direction))
-        print("visible cells dx1, dy1: ", perception.visible_cells.get((dx1, dy1), None))
-        if perception.visible_cells.get((dx1, dy1), None) in (None, TerrainType.WALL):
-           return True
-        else:
-            return False
-    
-    def detect_if_along_wall_left(self, perception):
-        # the cell in the front right or front left
-        dx1, dy1 = perception.direction.get_delta(Direction.get_left(perception.direction))
-        if perception.visible_cells.get((dx1, dy1), None) in (None, TerrainType.WALL):
-           return True
-        else:
-            return False
     
     def go_forward_and_update_coordinate(self, perception):
         """ if we can go forward, we go forward and update the coordinate of the ant """
@@ -159,26 +147,15 @@ class ConcurrentStrategy(AntStrategy):
         # Check if the ant is blocked on something
         # If the ant is blocked, turn left
         if self.blocked_on_something(perception):
-            self.was_blocked_on_something[perception.ant_id] = 1
-            if not self.detect_if_along_wall_right(perception):
-                return AntAction.TURN_RIGHT
-            elif not self.detect_if_along_wall_left(perception):
-                return AntAction.TURN_LEFT
-            else:
-                return AntAction.TURN_LEFT # priority to turn left if both sides are blocked
-    
-        elif self.was_blocked_on_something.get(perception.ant_id, 0) == 1 and not self.detect_if_along_wall_left(perception):
-            # if the ant was blocked on something, but is not anymore, we go 
-            self.was_blocked_on_something[perception.ant_id] = 0
+            self.previously_blocked_on_something[perception.ant_id] = True
             return AntAction.TURN_LEFT
         
-        elif self.was_blocked_on_something.get(perception.ant_id, 0) == 1 and self.detect_if_along_wall_right(perception):
-            # if the ant was blocked on something, but is not anymore, we go 
-            self.was_blocked_on_something[perception.ant_id] = 0
-            return AntAction.TURN_RIGHT
+        # avoid doing stupid turns around the map
+        elif self.previously_blocked_on_something.get(perception.ant_id, False):
+            self.previously_blocked_on_something[perception.ant_id] = False
+            return AntAction.TURN_LEFT
         
         else:
-            self.was_blocked_on_something[perception.ant_id] = 0
             self.update_position(perception)
             return AntAction.MOVE_FORWARD
 
@@ -193,11 +170,7 @@ class ConcurrentStrategy(AntStrategy):
 
         # go forward if the direction is already good
         if delta_direction == 0:
-            if self.blocked_on_something(perception):
-                return self.go_forward_and_update_coordinate(perception)
-            else:
-                self.update_position(perception)
-                return AntAction.MOVE_FORWARD
+            return self.go_forward_and_update_coordinate(perception)
         elif delta_direction <= 4:
             return AntAction.TURN_LEFT
         else:
