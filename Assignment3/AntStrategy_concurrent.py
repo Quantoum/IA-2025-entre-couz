@@ -37,6 +37,8 @@ class ConcurrentStrategy(AntStrategy):
         self.was_blocked_on_something = {}
         self.known_food_zone = {}
         self.just_arrived_at_previous_food_zone = {}
+        self.following_wall = {}  # ant_id -> True/False
+
 
     def decide_action(self, perception: AntPerception) -> AntAction:
         """Decide an action based on current perception"""
@@ -183,18 +185,48 @@ class ConcurrentStrategy(AntStrategy):
             return AntAction.MOVE_FORWARD
 
     def go_to_point(self, perception, point_x, point_y):
-        """ go to a point in the map """
-        # get the direction to the point
-        dx = point_x - self.ant_positions.get(perception.ant_id)[0]
-        dy = point_y - self.ant_positions.get(perception.ant_id)[1]
-        # get the direction of the ant
-        goal_direction = perception._get_direction_from_delta(dx, dy)
-        delta_direction = (perception.direction.value - goal_direction) % 8
 
-        # go forward if the direction is already good
-        if delta_direction == 0 or self.was_blocked_on_something[perception.ant_id] == 1:
-            return self.go_forward_and_update_coordinate(perception)
-        elif delta_direction <= 4:
+        ant_id = perception.ant_id
+        if ant_id not in self.following_wall:
+            self.following_wall[ant_id] = False
+
+        dx = point_x - self.ant_positions.get(ant_id)[0]
+        dy = point_y - self.ant_positions.get(ant_id)[1]
+        goal_dir = perception._get_direction_from_delta(dx, dy)
+        delta_direction = (perception.direction.value - goal_dir) % 8
+
+        # If we can go straight to the goal, do it
+        if self.can_go_straight_to(perception, point_x, point_y):
+            self.following_wall[ant_id] = False
+            if delta_direction == 0:
+                self.update_position(perception)
+                return AntAction.MOVE_FORWARD
+            elif delta_direction <= 4:
+                return AntAction.TURN_LEFT
+            else:
+                return AntAction.TURN_RIGHT
+
+        # If not, we start wall-following
+        self.following_wall[ant_id] = True
+        return self.wall_follow(perception)
+
+
+    def can_go_straight_to(self, perception, target_x, target_y):
+        dx = target_x - self.ant_positions.get(perception.ant_id)[0]
+        dy = target_y - self.ant_positions.get(perception.ant_id)[1]
+        goal_dir = perception._get_direction_from_delta(dx, dy)
+        step_dx, step_dy = Direction.get_delta(goal_dir)
+        
+        return perception.visible_cells.get((step_dx, step_dy), None) not in (None, TerrainType.WALL)
+
+    
+    def wall_follow(self, perception):
+        ant_id = perception.ant_id
+        if not self.detect_if_along_wall_left(perception):
             return AntAction.TURN_LEFT
+        elif not self.blocked_on_something(perception):
+            self.update_position(perception)
+            return AntAction.MOVE_FORWARD
         else:
             return AntAction.TURN_RIGHT
+
