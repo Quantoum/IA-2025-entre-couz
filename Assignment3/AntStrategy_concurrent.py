@@ -192,12 +192,8 @@ class ConcurrentStrategy(AntStrategy):
         delta_direction = (perception.direction.value - goal_direction) % 8
 
         # go forward if the direction is already good
-        if delta_direction == 0:
-            if self.blocked_on_something(perception):
-                return self.go_forward_and_update_coordinate(perception)
-            else:
-                self.update_position(perception)
-                return AntAction.MOVE_FORWARD
+        if delta_direction == 0 or self.was_blocked_on_something[perception.ant_id] == 1:
+            return self.go_forward_and_update_coordinate(perception)
         elif delta_direction <= 4:
             return AntAction.TURN_LEFT
         else:
