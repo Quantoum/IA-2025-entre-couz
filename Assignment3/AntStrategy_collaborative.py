@@ -1,5 +1,6 @@
 from environment import TerrainType, AntPerception
 from ant import AntAction, AntStrategy
+import random
 
 
 class CollaborativeStrategy(AntStrategy):
@@ -50,6 +51,12 @@ class CollaborativeStrategy(AntStrategy):
             else:
                 self.ants_last_action[ant_id] = AntAction.DEPOSIT_HOME_PHEROMONE
                 return AntAction.DEPOSIT_HOME_PHEROMONE
+            
+        # Suivre un phéromone si on est sur une case pheromone, ou si on le voit. 
+        # -> problème : on voit plusieurs phéromones. 
+        # Comment on fait ? -> on choisit le phéromone le plus puissant, si y'en a pas on bouge aléatoirement
+        # On suit dans quel sens la ligne de phéromone -> en fct de l'intensité
+        # X fois sur 10, on change de comportement (pour au cas ou trouver un meilleur chemin)
 
         # Otherwise, perform movement
         action = self._decide_movement(perception)
