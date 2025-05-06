@@ -470,12 +470,13 @@ def main():
     parser.add_argument(
         "--strategy",
         type=str,
-        default="random",
+        default="AntStrategy_collaborative.py",
         help="Ant strategy (random or filename) (default: random)",
     )
     parser.add_argument(
         "--strategy-file",
         type=str,
+        default="AntStrategy_collaborative.py",
         help="Python file containing custom ant strategy",
     )
     parser.add_argument(

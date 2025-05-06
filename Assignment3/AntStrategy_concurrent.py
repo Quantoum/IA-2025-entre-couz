@@ -5,6 +5,8 @@ import numpy as np
 from environment import TerrainType, AntPerception, Direction
 from ant import AntAction, AntStrategy
 
+# solo smart
+
 MAX_WALK_LENGTH = 40 # Maximum length of a walk in the levy walk
 MIN_WALK_LENGTH = 2  # Minimum length of a walk in the levy walk
 MU = 1.5  # Levy distribution parameter
