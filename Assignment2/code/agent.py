@@ -6,11 +6,12 @@
 # 
 
 from hybrid_agent import HybridAgent
+import monAgent
 
 class Agent:
     def __init__(self, player):
         self.player = player
-        self.hybrid_agent = HybridAgent(self.player)
+        self.hybrid_agent = monAgent(self.player)
     
     def __getattr__(self, attr):
         return getattr(self.hybrid_agent, attr)

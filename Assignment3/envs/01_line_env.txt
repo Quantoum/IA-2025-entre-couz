@@ -11,11 +11,11 @@ FOOD:
 
 # Number of ants to spawn
 ANTS:
-5
+1
 
 # Time limit in seconds (0 = no limit)
 TIME_LIMIT:
-1
+10
 
 # Maximum simulation steps (0 = no limit)
 MAX_STEPS:

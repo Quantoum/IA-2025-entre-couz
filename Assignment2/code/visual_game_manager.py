@@ -272,8 +272,7 @@ class VisualGameManager:
 
 
 if __name__ == "__main__":
-    agent_1 = RandomAgent(player=1)
-    agent_2 = monAgent(player=-1)
-    agent_2 = monAgent(player=-1)
+    agent_2 = RandomAgent(player=1)
+    agent_1 = monAgent(player=-1)
     instance = VisualGameManager(red_agent=agent_1, black_agent=agent_2)
     instance.play([agent_2])

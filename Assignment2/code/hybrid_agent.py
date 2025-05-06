@@ -70,7 +70,7 @@ class BetterMCTSNode:
             @return: The child node, a.k.a the next state.
         """
         if not self._untried_actions:
-            print("Warning: Called expand with no untried actions")
+            #print("Warning: Called expand with no untried actions")
             return None
         
         action = self._untried_actions.pop()
@@ -104,11 +104,11 @@ class BetterMCTSNode:
         """
             Alpha-Beta for short-term tactical evaluation
         """
-        print("called rollout ! ----------------")
+        #print("called rollout ! ----------------")
         # if terminal state -> return utility
         if self.state.is_terminal():
             result = self.state.utility(self.player)
-            print("final result ? ---------------")
+            #print("final result ? ---------------")
             return result
             
         # Initialize the current state for rollout
@@ -176,14 +176,14 @@ class BetterMCTSNode:
         """
         Better rollout policy that uses heuristics to guide the selection
         """
-        print("Entering rollout_policy")
+        #print("Entering rollout_policy")
         # error handling
         if not possible_moves:
             return None
         
-        print(len(possible_moves))
+        #print(len(possible_moves))
         if len(possible_moves) == 1: # one move possible, no choice
-            print("Only one move possible, playing it !")
+            #print("Only one move possible, playing it !")
             return possible_moves[0]
             
         # no time, get random to survive !
@@ -248,7 +248,7 @@ class BetterMCTSNode:
             probs = [float(v)/float(sum_adjusted) for v in adjusted_values]
             # Simple validation
             if abs(sum(probs) - 1.0) > 0.01:  # Allow small floating point error
-                print(f"Warning: Probabilities don't sum to 1: {sum(probs)}")
+                #print(f"Warning: Probabilities don't sum to 1: {sum(probs)}")
                 return random.choice(possible_moves)
                 
             index = np.random.choice(range(len(possible_moves)), p=np.array(probs))
@@ -289,7 +289,7 @@ class BetterMCTSNode:
                 
         # pick the child w/ highest score
         if not choices_weights:
-            print("No children to select from in best_child!")
+            #print("No children to select from in best_child!")
             return None
             
         return self.children[argmax(choices_weights)]
@@ -334,14 +334,14 @@ class BetterMCTSNode:
             try: # sometimes mcts errors so this prevent erros
                 #DOCS: ()["MCTS Deep Dive.pdf"]
                 # 1: Selection and expansion
-                print("Starting tree policy for iteration", iteration)
+                #print("Starting tree policy for iteration", iteration)
                 v = self._tree_policy()
-                print("Completed tree policy")
+                #print("Completed tree policy")
                 
                 # 2: Simulation
-                print("Starting rollout")
+                #print("Starting rollout")
                 reward = v.rollout()
-                print(f"Completed rollout: reward={reward}")
+                #print(f"Completed rollout: reward={reward}")
                 
                 # 3: Backpropagation
                 v.backpropagate(reward)
@@ -357,7 +357,7 @@ class BetterMCTSNode:
         
         # if there is no children, return self
         if not self.children:
-            print("No children generated during MCTS search")
+            #print("No children generated during MCTS search")
             return self
             
         # get the best child (visit count) for final move choice
@@ -365,19 +365,19 @@ class BetterMCTSNode:
         children_list = list(self.children)
         visits_list = [float(child.n()) for child in children_list]
         
-        print(f"Children visits: {visits_list}")
+        #print(f"Children visits: {visits_list}")
         
         # check if we have any visited children
         if sum(visits_list) == 0:
             # if no visits, choose randomly among children
             random_idx = np.random.randint(0, len(children_list))
             best_child = children_list[random_idx]
-            print(f"No visits, choosing randomly: {best_child.parent_action}")
+            #print(f"No visits, choosing randomly: {best_child.parent_action}")
         else:
             # Choose the child with the most visits - use argmax on the visits list
             best_index = np.argmax(visits_list)
             best_child = children_list[best_index]
-            print(f"Best child has {visits_list[best_index]} visits: {best_child.parent_action}")
+            #print(f"Best child has {visits_list[best_index]} visits: {best_child.parent_action}")
             
         return best_child
 
@@ -590,7 +590,7 @@ class HybridAgent:
         # Get the predetermined move
         move_tuple = self.opening_book.get(state.turn)
         if not move_tuple:
-            print(f"No opening move found for turn {state.turn}, falling back to Alpha-Beta")
+            #print(f"No opening move found for turn {state.turn}, falling back to Alpha-Beta")
             return self.execute_alpha_beta(state, {'max_depth': 4})
             
         start_pos, end_pos = move_tuple
@@ -603,7 +603,7 @@ class HybridAgent:
             return action
             
         # not valid move -> A-B
-        print(f"Opening book move {action} not valid, falling back to Alpha-Beta")
+        #print(f"Opening book move {action} not valid, falling back to Alpha-Beta")
         return self.execute_alpha_beta(state, {'max_depth': 4})
         
     def execute_random(self, state):
@@ -636,7 +636,7 @@ class HybridAgent:
             # Check if time limit was respected
             elapsed = time.time() - start_time
             if time_limit and elapsed > time_limit:
-                print(f"Warning: Alpha-Beta exceeded time limit: {elapsed:.2f}s > {time_limit:.2f}s")
+                #print(f"Warning: Alpha-Beta exceeded time limit: {elapsed:.2f}s > {time_limit:.2f}s")
                 # fall back to easier search
                 alpha_beta.max_depth = MAX_DEPTH_A_B_LOW_TIME
                 action = alpha_beta.best_action(state)
@@ -695,7 +695,7 @@ class HybridAgent:
         # legal moves
         legal_moves = state.actions()
         if not legal_moves:
-            print("No legal moves available!")
+            #print("No legal moves available!")
             return None
         
         try:
@@ -715,7 +715,7 @@ class HybridAgent:
             
             # print table stats before the search (only once every 5 moves to reduce output)
             if state.turn % 5 == 0 and DEBUG_MODE:
-                print(f"\nTurn {state.turn} - Initial TT state:")
+                #print(f"\nTurn {state.turn} - Initial TT state:")
                 self.trans_table.print_stats()
                 
             # execute the selected strategy
@@ -738,13 +738,13 @@ class HybridAgent:
             
             # Get detailed TT stats - only print once every 5 moves to avoid clutter
             if state.turn % 5 == 0 and DEBUG_MODE:
-                print(f"\nTurn {state.turn} - After search TT state:")
+                #print(f"\nTurn {state.turn} - After search TT state:")
                 self.trans_table.print_stats()
             else:
                 # Just print the hit rate every move
                 if DEBUG_MODE:
                     hit_rate = self.trans_table.get_hit_rate()
-                    print(f"Transposition table hit rate: {hit_rate:.2%} (Size: {len(self.trans_table.table)}/{self.trans_table.max_size})")
+                    #print(f"Transposition table hit rate: {hit_rate:.2%} (Size: {len(self.trans_table.table)}/{self.trans_table.max_size})")
             
             return action
             

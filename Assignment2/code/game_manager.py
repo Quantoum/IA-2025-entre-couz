@@ -82,8 +82,8 @@ if __name__ == "__main__":
     total_score_1 = 0
     total_score_2 = 0
     
-    agent_1 = HybridAgent(player=1)
-    agent_2 = RandomAgent(player=-1)
+    agent_2 = monAgent(player=1)
+    agent_1 = RandomAgent(player=-1)
     #agent_2 = Agent(player=-1)
     
     number_of_games = 10
