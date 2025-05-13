@@ -34,18 +34,17 @@ class ConcurrentStrategy(AntStrategy):
         self.next_orientation_list = {}  
         self.forward_motion_counter = {} # list of next movements to do
         self.ant_positions = {}
-        self.was_blocked_on_something = {}
         self.known_food_zone = {}
         self.just_arrived_at_previous_food_zone = {}
-        self.following_wall = {}  # ant_id -> True/False
-        self.explored_positions = {}
+        self.previous_wall_follow_type = {}
 
 
     def decide_action(self, perception: AntPerception) -> AntAction:
         """Decide an action based on current perception"""
         if perception.ant_id not in self.ant_positions:
             self.ant_positions[perception.ant_id] = (0, 0)  # Assuming ants always start at (0, 0)
-
+    
+        # return self.go_to_point(perception, -15, 0) 
 
         # Priority 1: Pick up food if standing on it
         if (not perception.has_food and perception.visible_cells[(0, 0)] == TerrainType.FOOD):
@@ -134,14 +133,39 @@ class ConcurrentStrategy(AntStrategy):
         goal_dir = perception._get_direction_from_delta(dx, dy)
         delta_direction = (perception.direction.value - goal_dir) % 8
 
-        if delta_direction == 0 or self.detect_if_along_walls(perception):
-            return self.try_go_forward_and_update_coordinate(perception)
+        if delta_direction == 0:
+            if self.blocked_on_something(perception):
+                pass
+            else:
+                self.previous_wall_follow_type[perception.ant_id] = None
+                return self.try_go_forward_and_update_coordinate(perception)
+        
+        if self.previous_wall_follow_type.get(perception.ant_id, None) is not None:
+            if self.previous_wall_follow_type[perception.ant_id] == "left":
+                return self.follow_left_wall(perception)
+            elif self.previous_wall_follow_type[perception.ant_id] == "right":
+                return self.follow_right_wall(perception)
+        elif self.detect_if_along_walls(perception):
+            random_number = random.randint(0, 1)
+            if random_number == 0:
+                if self.detect_if_along_wall_right(perception):
+                    return self.follow_right_wall(perception)
+                elif self.detect_if_along_wall_left(perception):
+                    return self.follow_left_wall(perception)
+            elif random_number == 1:
+                if self.detect_if_along_wall_left(perception):
+                    return self.follow_left_wall(perception)
+                elif self.detect_if_along_wall_right(perception):
+                    return self.follow_right_wall(perception)
         elif delta_direction <= 4:
+            self.previous_wall_follow_type[perception.ant_id] = None
             return AntAction.TURN_LEFT
         else:
+            self.previous_wall_follow_type[perception.ant_id] = None
             return AntAction.TURN_RIGHT
     
     def follow_right_wall(self, perception):
+        self.previous_wall_follow_type[perception.ant_id] = "right"
         # si elle n'est pas bloquée va tout droit
         if self.blocked_on_something(perception):
             if self.detect_if_along_wall_right:
@@ -151,7 +175,20 @@ class ConcurrentStrategy(AntStrategy):
         elif not self.detect_if_along_wall_right(perception):
             return AntAction.TURN_RIGHT
         else: 
-            return AntAction.MOVE_FORWARD
+            return self.try_go_forward_and_update_coordinate(perception)
+        
+    def follow_left_wall(self, perception):
+        self.previous_wall_follow_type[perception.ant_id] = "left"
+        # si elle n'est pas bloquée va tout droit
+        if self.blocked_on_something(perception):
+            if self.detect_if_along_wall_left:
+                return AntAction.TURN_RIGHT
+            else:
+                return AntAction.TURN_LEFT
+        elif not self.detect_if_along_wall_left(perception):
+            return AntAction.TURN_LEFT
+        else: 
+            return self.try_go_forward_and_update_coordinate(perception)
 
     def search_for_food(self, perception):
         ant_id = perception.ant_id
