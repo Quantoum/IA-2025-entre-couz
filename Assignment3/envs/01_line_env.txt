@@ -15,7 +15,7 @@ ANTS:
 
 # Time limit in seconds (0 = no limit)
 TIME_LIMIT:
-10
+20
 
 # Maximum simulation steps (0 = no limit)
 MAX_STEPS:
