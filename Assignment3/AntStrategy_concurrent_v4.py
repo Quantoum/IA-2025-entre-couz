@@ -47,15 +47,17 @@ class ConcurrentStrategy(AntStrategy):
         if perception.ant_id not in self.explored_positions_while_wall_following:
             self.explored_positions_while_wall_following[perception.ant_id] = []
             
-        # return self.go_to_point(perception, -15, 0) 
+        return self.go_to_point(perception, 15, 15) # go to the center of the map
 
         # Priority 1: Pick up food if standing on it
         if (not perception.has_food and perception.visible_cells[(0, 0)] == TerrainType.FOOD):
             self.known_food_zone[perception.ant_id] = self.ant_positions.get(perception.ant_id, (0,0))
+            self.explored_positions_while_wall_following[perception.ant_id] = [] # reset explored positions
             return AntAction.PICK_UP_FOOD
 
         # Priority 2: Drop food if at colony and carrying food
         if (perception.has_food and perception.visible_cells[(0,0)] == TerrainType.COLONY):
+            self.explored_positions_while_wall_following[perception.ant_id] = [] # reset explored positions
             return AntAction.DROP_FOOD
 
         # Priority 3: Search for food if not carrying food
@@ -135,7 +137,17 @@ class ConcurrentStrategy(AntStrategy):
         dy = point_y - self.ant_positions.get(ant_id)[1]
         goal_dir = perception._get_direction_from_delta(dx, dy)
         delta_direction = (perception.direction.value - goal_dir) % 8
-        # print("explored_positions_while_wall_following: ", self.explored_positions_while_wall_following)
+
+        if self.ant_positions.get(ant_id) in self.explored_positions_while_wall_following.get(ant_id, []):
+            if self.previous_wall_follow_type[perception.ant_id] == "left":
+                self.previous_wall_follow_type[perception.ant_id] = "left"
+                return self.follow_left_wall(perception)
+            elif self.previous_wall_follow_type[perception.ant_id] == "right":
+                self.previous_wall_follow_type[perception.ant_id] = "right"
+                return self.follow_right_wall(perception)
+            else:
+                self.previous_wall_follow_type[perception.ant_id] = "left"
+                return self.follow_left_wall(perception)
 
         if delta_direction == 0:
             self.previous_wall_follow_type[perception.ant_id] = None
@@ -159,6 +171,8 @@ class ConcurrentStrategy(AntStrategy):
     
     def follow_right_wall(self, perception):
         self.previous_wall_follow_type[perception.ant_id] = "right"
+        self.explored_positions_while_wall_following[perception.ant_id].append(self.ant_positions.get(perception.ant_id))
+
         # si elle n'est pas bloquée va tout droit
         if self.blocked_on_something(perception):
             if self.detect_if_along_wall_right:
@@ -172,12 +186,11 @@ class ConcurrentStrategy(AntStrategy):
         
     def follow_left_wall(self, perception):
         self.previous_wall_follow_type[perception.ant_id] = "left"
+        self.explored_positions_while_wall_following[perception.ant_id].append(self.ant_positions.get(perception.ant_id))
+        
         # si elle n'est pas bloquée va tout droit
         if self.blocked_on_something(perception):
-            print("coucou,", time.time())
             if self.detect_if_along_wall_left:
-
-                print("ant blocked on something at time: ", time.time())
                 return AntAction.TURN_RIGHT
             else:
                 return AntAction.TURN_LEFT
