@@ -38,33 +38,41 @@ class ConcurrentStrategy(AntStrategy):
         self.just_arrived_at_previous_food_zone = {}
         self.previous_wall_follow_type = {}
         self.explored_positions_while_wall_following = {}
+        self.counter = {}
 
 
     def decide_action(self, perception: AntPerception) -> AntAction:
         """Decide an action based on current perception"""
         if perception.ant_id not in self.ant_positions:
             self.ant_positions[perception.ant_id] = (0, 0)  # Assuming ants always start at (0, 0)
-        if perception.ant_id not in self.explored_positions_while_wall_following:
-            self.explored_positions_while_wall_following[perception.ant_id] = []
-            
-        return self.go_to_point(perception, 15, 15) # go to the center of the map
 
         # Priority 1: Pick up food if standing on it
         if (not perception.has_food and perception.visible_cells[(0, 0)] == TerrainType.FOOD):
             self.known_food_zone[perception.ant_id] = self.ant_positions.get(perception.ant_id, (0,0))
-            self.explored_positions_while_wall_following[perception.ant_id] = [] # reset explored positions
             return AntAction.PICK_UP_FOOD
 
         # Priority 2: Drop food if at colony and carrying food
         if (perception.has_food and perception.visible_cells[(0,0)] == TerrainType.COLONY):
-            self.explored_positions_while_wall_following[perception.ant_id] = [] # reset explored positions
             return AntAction.DROP_FOOD
+
+        # drop pheromone if counter is 0
+        if self.counter.get(perception.ant_id, 0) == 0:
+            if perception.has_food:
+                self.counter[perception.ant_id] = 1
+                return AntAction.DEPOSIT_FOOD_PHEROMONE
+            else:
+                self.counter[perception.ant_id] = 1
+                return AntAction.DEPOSIT_HOME_PHEROMONE
+        else:
+            # next time we will not drop pheromone and perform an action
+            self.counter[perception.ant_id] = 0
 
         # Priority 3: Search for food if not carrying food
         if not perception.has_food:
             if perception.can_see_food():
                 food_x, food_y = self.get_coordinate_something(perception, TerrainType.FOOD)
-                return self.go_to_point(perception, food_x, food_y)  
+                return self.go_to_point(perception, food_x, food_y) 
+
             # if known food zone, go to it
             elif self.known_food_zone.get(perception.ant_id, None) is not None:
                 # if we are at the position of the food, we remove it from the list
@@ -80,13 +88,38 @@ class ConcurrentStrategy(AntStrategy):
             elif self.just_arrived_at_previous_food_zone.get(perception.ant_id, 0) > 0:
                 self.just_arrived_at_previous_food_zone[perception.ant_id] -= 1
                 return AntAction.TURN_RIGHT
+            
+            elif self.find_strongest_pheromone_position(perception, perception.food_pheromone): # pheromone detection
+                # Find direction of strongest pheromone
+                dx, dy = self.find_strongest_pheromone_position(perception, perception.food_pheromone)
+                return self.go_to_point(perception, dx, dy) # go to the strongest pheromone 
+
+
             # else we do a random walk to hope finding food
             else:
                 return self.search_for_food(perception)
 
         # Priority 4: Go to the colony if carrying food
         if perception.has_food :
-            return self.go_to_point(perception, 0, 0) # go to the colony
+            if self.find_strongest_pheromone_position(perception, perception.home_pheromone) is not None:
+                dx, dy = self.find_strongest_pheromone_position(perception, perception.home_pheromone)
+                return self.go_to_point(perception, dx, dy) # go to the strongest pheromone
+            else:
+                return self.go_to_point(perception, 0, 0) # go to the colony
+
+    def find_strongest_pheromone_position(self, perception, type):
+        # Select the position with maximum strength
+        best_pos, best_strength = None, 0.0
+        for pos, strength in type.items():
+            if strength > best_strength:
+                best_strength = strength
+                best_pos = pos
+        if best_pos is None:
+            return None
+        dx, dy = best_pos
+        target_x = dx + self.ant_positions.get(perception.ant_id)[0]
+        target_y = dy + self.ant_positions.get(perception.ant_id)[1]
+        return target_x, target_y
     
     def update_coordinate(self, perception):
         # Update the position of the ant
