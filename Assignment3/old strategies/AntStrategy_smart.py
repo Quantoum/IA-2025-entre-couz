@@ -59,14 +59,14 @@ class ConcurrentStrategy(AntStrategy):
         # drop pheromone if counter is 0
         if self.counter.get(perception.ant_id, 0) == 0:
             if perception.has_food:
-                self.counter[perception.ant_id] = 1
+                self.counter[perception.ant_id] = 2
                 return AntAction.DEPOSIT_FOOD_PHEROMONE
             else:
-                self.counter[perception.ant_id] = 1
+                self.counter[perception.ant_id] = 2
                 return AntAction.DEPOSIT_HOME_PHEROMONE
         else:
             # next time we will not drop pheromone and perform an action
-            self.counter[perception.ant_id] = 0
+            self.counter[perception.ant_id] -= 1
 
         # Priority 3: Search for food if not carrying food
         if not perception.has_food:

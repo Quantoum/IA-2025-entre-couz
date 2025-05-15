@@ -571,4 +571,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        # Your code that might raise an error
+        main()
+    except Exception as e:
+        print(f"An error occurred: {e}")
+

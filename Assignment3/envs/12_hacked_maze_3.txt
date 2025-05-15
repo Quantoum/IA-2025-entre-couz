@@ -18,7 +18,7 @@ FOOD:
 
 
 ANTS:
-2
+100
 
 TIME_LIMIT:
 1000
